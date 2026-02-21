@@ -1,0 +1,179 @@
+# ============================================
+# CRYPTO LEVELS BHUSHAN - GITIGNORE
+# ============================================
+
+# Environment Variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.env
+backend/.env
+frontend/.env
+
+# ============================================
+# BACKEND (Python/FastAPI)
+# ============================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/__pycache__/
+backend/*.pyc
+backend/venv/
+backend/env/
+backend/ENV/
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+
+# Distribution / Packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# ============================================
+# FRONTEND (React/Node)
+# ============================================
+
+# Dependencies
+frontend/node_modules/
+node_modules/
+frontend/package-lock.json
+
+# Production Build
+frontend/build/
+frontend/dist/
+
+# Testing
+frontend/coverage/
+
+# Cache
+frontend/.cache/
+.cache/
+.npm/
+.eslintcache
+
+# Misc
+frontend/.DS_Store
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ============================================
+# IDEs & EDITORS
+# ============================================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# ============================================
+# OS FILES
+# ============================================
+
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ============================================
+# TEMPORARY & BACKUP FILES
+# ============================================
+
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*_OLD.*
+*_BACKUP.*
+*.swp
+*.swo
+
+# ============================================
+# DATABASE FILES
+# ============================================
+
+*.db
+*.sqlite
+*.sqlite3
+
+# ============================================
+# CREDENTIALS & SECRETS
+# ============================================
+
+*credentials*
+*secret*
+*password*
+*token*
+*.pem
+*.key
+*.cert
+
+# ============================================
+# BUILD & DEPLOYMENT
+# ============================================
+
+*.zip
+*.tar.gz
+*.rar
+.vercel/
+.netlify/
+
+# ============================================
+# DOCUMENTATION ARTIFACTS
+# ============================================
+
+# Keep documentation but ignore generated files
+*.pdf
+*.docx

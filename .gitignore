@@ -1,0 +1,110 @@
+# ============================================
+# ROOT LEVEL GITIGNORE
+# ============================================
+
+# Environment Variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Credentials
+*credentials*
+*secret*
+*password*
+*token*
+
+# ============================================
+# PROJECT-SPECIFIC TEMPORARY FILES
+# ============================================
+
+# Test/Debug Scripts (not part of main app)
+test_*.py
+fix_*.py
+check_*.py
+delta_monitor_*.py
+*_copy.py
+*copy.py
+
+# Temporary text files
+*.txt
+!requirements.txt
+!requirements_yahoo.txt
+
+# Batch files (Windows scripts)
+*.bat
+!crypto_levels_bhushan/setup.bat
+!crypto_levels_bhushan/start.bat
+!crypto_levels_bhushan/stop.bat
+!crypto_levels_bhushan/restart_backend.bat
+
+# Old versions
+v3_gui*.py
+*_v2.py
+*_old.py
+*_backup.py
+
+# Standalone scripts (not part of crypto_levels_bhushan)
+twelvedata_levels_finder*.py
+yahoo_levels_finder.py
+v3.py
