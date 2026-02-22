@@ -12,7 +12,6 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 function App() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [triggeredLevels, setTriggeredLevels] = useState([]);
-  const [prices, setPrices] = useState({});
   const [apiUsage, setApiUsage] = useState({ used: 0, limit: 800 });
 
   // Fetch scrips and prices periodically
@@ -25,7 +24,6 @@ function App() {
 
         const scrips = scripsResponse.data.scrips;
         const triggered = [];
-        const newPrices = {};
 
         // Fetch prices for all scrips
         for (const scrip of scrips) {
@@ -33,7 +31,6 @@ function App() {
             const marketType = scrip.market_type || 'crypto'; const priceResponse = await axios.get(`${API_URL}/api/price/${scrip.symbol}`, { params: { market_type: marketType } });
             if (priceResponse.data.success) {
               const currentPrice = priceResponse.data.mark_price;
-              newPrices[scrip.symbol] = currentPrice;
 
               // Check each level
               scrip.trigger_levels?.forEach((level, idx) => {
@@ -58,7 +55,6 @@ function App() {
         }
 
         setTriggeredLevels(triggered);
-        setPrices(newPrices);
       } catch (error) {
         console.error('Error fetching triggered levels:', error);
       }
