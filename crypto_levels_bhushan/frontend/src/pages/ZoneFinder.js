@@ -107,15 +107,21 @@ function ZoneFinder() {
 
   const searchZones = async () => {
     console.log('searchZones called');
+    console.log('marketType:', marketType);
     console.log('useDropdown:', useDropdown);
     console.log('symbol:', symbol);
     console.log('searchInput:', searchInput);
     
     // Get symbol from appropriate source
     let symbolToSearch = '';
-    if (useDropdown) {
+    if (marketType === 'indian_stocks') {
+      // For Indian stocks, always use searchInput (from Nifty 50 dropdown)
+      symbolToSearch = searchInput || '';
+    } else if (useDropdown) {
+      // For crypto dropdown mode
       symbolToSearch = symbol || '';
     } else {
+      // For crypto/forex search mode
       symbolToSearch = searchInput || '';
     }
     
@@ -193,9 +199,14 @@ function ZoneFinder() {
 
     // Get symbol from appropriate source
     let symbolToPush = '';
-    if (useDropdown) {
+    if (marketType === 'indian_stocks') {
+      // For Indian stocks, always use searchInput (from Nifty 50 dropdown)
+      symbolToPush = searchInput;
+    } else if (useDropdown) {
+      // For crypto dropdown mode
       symbolToPush = symbol;
     } else {
+      // For crypto/forex search mode
       symbolToPush = searchInput;
     }
     
@@ -242,9 +253,14 @@ function ZoneFinder() {
   const openDeltaExchange = () => {
     // Get symbol from appropriate source
     let symbolToOpen = '';
-    if (useDropdown) {
+    if (marketType === 'indian_stocks') {
+      // For Indian stocks, always use searchInput (from Nifty 50 dropdown)
+      symbolToOpen = searchInput;
+    } else if (useDropdown) {
+      // For crypto dropdown mode
       symbolToOpen = symbol;
     } else {
+      // For crypto/forex search mode
       symbolToOpen = searchInput;
     }
     
