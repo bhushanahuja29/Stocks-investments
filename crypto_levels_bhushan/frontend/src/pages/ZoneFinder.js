@@ -9,6 +9,7 @@ function ZoneFinder() {
   const [symbol, setSymbol] = useState('');
   const [timeframe, setTimeframe] = useState('1w');
   const [marketType, setMarketType] = useState('crypto'); // 'crypto' or 'forex'
+  const [version, setVersion] = useState('v3'); // 'v3' or 'v4'
   const [zones, setZones] = useState([]);
   const [selectedZones, setSelectedZones] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -84,7 +85,8 @@ function ZoneFinder() {
       const response = await axios.post(`${API_URL}/api/zones/search`, {
         symbol: symbolToSearch.toUpperCase(),
         timeframe: timeframe,
-        market_type: marketType
+        market_type: marketType,
+        version: version  // Add version parameter
       });
       
       if (response.data.success) {
@@ -261,7 +263,13 @@ function ZoneFinder() {
                   type="text"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value.toUpperCase())}
-                  placeholder="Enter symbol (e.g., BTCUSDT)"
+                  placeholder={
+                    marketType === 'indian_stocks' 
+                      ? "Enter symbol (e.g., RELIANCE, TCS, INFY)" 
+                      : marketType === 'forex'
+                      ? "Enter symbol (e.g., EURUSD, XAUUSD)"
+                      : "Enter symbol (e.g., BTCUSDT)"
+                  }
                   className="symbol-search-input"
                   onKeyPress={(e) => e.key === 'Enter' && searchZones()}
                 />
@@ -302,7 +310,31 @@ function ZoneFinder() {
               >
                 <option value="crypto">🪙 Crypto (Delta API)</option>
                 <option value="forex">💱 Forex/Gold (Twelve Data)</option>
+                <option value="indian_stocks">🇮🇳 Indian Stocks (NSE/BSE)</option>
               </select>
+            </div>
+
+            <div className="input-group">
+              <label>Algorithm Version</label>
+              <div className="version-toggle">
+                <button 
+                  className={`version-btn ${version === 'v3' ? 'active' : ''}`}
+                  onClick={() => setVersion('v3')}
+                  title="V3: 10% move, 3% body - Best for weekly/monthly"
+                >
+                  V3
+                </button>
+                <button 
+                  className={`version-btn ${version === 'v4' ? 'active' : ''}`}
+                  onClick={() => setVersion('v4')}
+                  title="V4: 3.5% move, 30% body - Best for 4h/1h"
+                >
+                  V4
+                </button>
+              </div>
+              <small className="version-hint">
+                {version === 'v3' ? '📊 Standard (10% move)' : '⚡ Scalping (3.5% move)'}
+              </small>
             </div>
           </div>
 

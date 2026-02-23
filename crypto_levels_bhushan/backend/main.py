@@ -290,42 +290,79 @@ def compute_zone_for_bar_flexible(candles_most_recent_first, base_offset, rally_
     return None
 
 
-def compute_zones_forex(symbol: str, timeframe: str = "1w"):
+def compute_zones_forex(symbol: str, timeframe: str = "1w", version: str = "v3"):
     """Compute zones for forex/gold using Twelve Data"""
-    print(f"[compute_zones_forex] symbol={symbol}, timeframe={timeframe}")
+    print(f"[compute_zones_forex] symbol={symbol}, timeframe={timeframe}, version={version}")
     
-    if timeframe == "1M":
-        daily = fetch_twelve_data(symbol, interval="1day", outputsize=5000)
-        candles = resample_daily_to_monthly(daily)
-        min_candles = 40
-        rally_min = 2
-        move_min = 15
-    elif timeframe == "1w":
-        daily = fetch_twelve_data(symbol, interval="1day", outputsize=5000)
-        candles = resample_daily_to_weekly_monday(daily)
-        min_candles = 60
-        rally_min = 3
-        move_min = 10
-    elif timeframe == "1d":
-        candles = fetch_twelve_data(symbol, interval="1day", outputsize=5000)
-        candles.sort(key=lambda x: x["time"], reverse=True)
-        min_candles = 100
-        rally_min = 3
-        move_min = 8
-    elif timeframe == "4h":
-        candles = fetch_twelve_data(symbol, interval="4h", outputsize=5000)
-        candles.sort(key=lambda x: x["time"], reverse=True)
-        min_candles = 150
-        rally_min = 4
-        move_min = 6
-    elif timeframe == "1h":
-        candles = fetch_twelve_data(symbol, interval="1h", outputsize=5000)
-        candles.sort(key=lambda x: x["time"], reverse=True)
-        min_candles = 200
-        rally_min = 5
-        move_min = 5
-    else:
-        raise ValueError(f"Unsupported timeframe: {timeframe}")
+    # V3 thresholds (original)
+    if version == "v3":
+        if timeframe == "1M":
+            daily = fetch_twelve_data(symbol, interval="1day", outputsize=5000)
+            candles = resample_daily_to_monthly(daily)
+            min_candles = 40
+            rally_min = 2
+            move_min = 15
+        elif timeframe == "1w":
+            daily = fetch_twelve_data(symbol, interval="1day", outputsize=5000)
+            candles = resample_daily_to_weekly_monday(daily)
+            min_candles = 60
+            rally_min = 3
+            move_min = 10
+        elif timeframe == "1d":
+            candles = fetch_twelve_data(symbol, interval="1day", outputsize=5000)
+            candles.sort(key=lambda x: x["time"], reverse=True)
+            min_candles = 100
+            rally_min = 3
+            move_min = 8
+        elif timeframe == "4h":
+            candles = fetch_twelve_data(symbol, interval="4h", outputsize=5000)
+            candles.sort(key=lambda x: x["time"], reverse=True)
+            min_candles = 150
+            rally_min = 4
+            move_min = 6
+        elif timeframe == "1h":
+            candles = fetch_twelve_data(symbol, interval="1h", outputsize=5000)
+            candles.sort(key=lambda x: x["time"], reverse=True)
+            min_candles = 200
+            rally_min = 5
+            move_min = 5
+        else:
+            raise ValueError(f"Unsupported timeframe: {timeframe}")
+    
+    # V4 thresholds (scalping - lower thresholds for forex)
+    else:  # version == "v4"
+        if timeframe == "1M":
+            daily = fetch_twelve_data(symbol, interval="1day", outputsize=5000)
+            candles = resample_daily_to_monthly(daily)
+            min_candles = 40
+            rally_min = 2
+            move_min = 5  # Very low for forex monthly
+        elif timeframe == "1w":
+            daily = fetch_twelve_data(symbol, interval="1day", outputsize=5000)
+            candles = resample_daily_to_weekly_monday(daily)
+            min_candles = 60
+            rally_min = 3
+            move_min = 2  # Very low for forex weekly
+        elif timeframe == "1d":
+            candles = fetch_twelve_data(symbol, interval="1day", outputsize=5000)
+            candles.sort(key=lambda x: x["time"], reverse=True)
+            min_candles = 100
+            rally_min = 3
+            move_min = 1.5  # Very low for forex daily
+        elif timeframe == "4h":
+            candles = fetch_twelve_data(symbol, interval="4h", outputsize=5000)
+            candles.sort(key=lambda x: x["time"], reverse=True)
+            min_candles = 150
+            rally_min = 3
+            move_min = 0.8  # Very low for forex 4h (EUR/USD max is 1.43%)
+        elif timeframe == "1h":
+            candles = fetch_twelve_data(symbol, interval="1h", outputsize=5000)
+            candles.sort(key=lambda x: x["time"], reverse=True)
+            min_candles = 200
+            rally_min = 3
+            move_min = 0.5  # Very low for forex 1h
+        else:
+            raise ValueError(f"Unsupported timeframe: {timeframe}")
 
     print(f"[compute_zones_forex] Got {len(candles)} candles, min_candles={min_candles}")
     
@@ -362,11 +399,189 @@ def compute_zones_forex(symbol: str, timeframe: str = "1w"):
 
 # ====== END TWELVE DATA FUNCTIONS ======
 
+# ====== YAHOO FINANCE FUNCTIONS FOR INDIAN STOCKS ======
+
+def fetch_yahoo_data_indian(symbol: str, period: str = "2y", interval: str = "1d"):
+    """
+    Fetch Indian stock data from Yahoo Finance
+    
+    symbol: Yahoo symbol (e.g., 'RELIANCE.NS' for NSE, 'RELIANCE.BO' for BSE)
+    period: '1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max'
+    interval: '1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1wk', '1mo', '3mo'
+    """
+    import yfinance as yf
+    
+    print(f"[YAHOO] Fetching {symbol} from Yahoo Finance...")
+    
+    ticker = yf.Ticker(symbol)
+    df = ticker.history(period=period, interval=interval)
+    
+    if df.empty:
+        print(f"[YAHOO] No data found for {symbol}")
+        return []
+    
+    print(f"[YAHOO] Fetched {len(df)} candles")
+    
+    # Convert to our format
+    candles = []
+    for index, row in df.iterrows():
+        candles.append({
+            "time": int(index.timestamp()),
+            "open": fnum(row['Open']),
+            "high": fnum(row['High']),
+            "low": fnum(row['Low']),
+            "close": fnum(row['Close']),
+            "volume": fnum(row.get('Volume'), 0.0),
+        })
+    
+    # Sort ascending by time
+    candles.sort(key=lambda x: x["time"])
+    return candles
+
+
+def compute_zones_indian_stocks(symbol: str, timeframe: str = "1w", version: str = "v3"):
+    """Compute zones for Indian stocks using Yahoo Finance"""
+    print(f"[compute_zones_indian_stocks] symbol={symbol}, timeframe={timeframe}, version={version}")
+    
+    # V3 thresholds (standard - for larger moves)
+    if version == "v3":
+        if timeframe == "1M":
+            daily = fetch_yahoo_data_indian(symbol, period="10y", interval="1d")
+            candles = resample_daily_to_monthly(daily)
+            min_candles = 40
+            rally_min = 2
+            move_min = 15
+        elif timeframe == "1w":
+            daily = fetch_yahoo_data_indian(symbol, period="5y", interval="1d")
+            candles = resample_daily_to_weekly_monday(daily)
+            min_candles = 60
+            rally_min = 3
+            move_min = 10
+        elif timeframe == "1d":
+            candles = fetch_yahoo_data_indian(symbol, period="2y", interval="1d")
+            candles.sort(key=lambda x: x["time"], reverse=True)
+            min_candles = 100
+            rally_min = 3
+            move_min = 8
+        elif timeframe == "4h":
+            candles = fetch_yahoo_data_indian(symbol, period="60d", interval="1h")
+            # Group into 4h candles
+            candles_4h = []
+            for i in range(0, len(candles), 4):
+                chunk = candles[i:i+4]
+                if len(chunk) == 4:
+                    candles_4h.append({
+                        "time": chunk[0]["time"],
+                        "open": chunk[0]["open"],
+                        "high": max(c["high"] for c in chunk),
+                        "low": min(c["low"] for c in chunk),
+                        "close": chunk[-1]["close"],
+                        "volume": sum(c["volume"] for c in chunk)
+                    })
+            candles = candles_4h
+            candles.sort(key=lambda x: x["time"], reverse=True)
+            min_candles = 150
+            rally_min = 4
+            move_min = 6
+        elif timeframe == "1h":
+            candles = fetch_yahoo_data_indian(symbol, period="60d", interval="1h")
+            candles.sort(key=lambda x: x["time"], reverse=True)
+            min_candles = 200
+            rally_min = 5
+            move_min = 5
+        else:
+            raise ValueError(f"Unsupported timeframe: {timeframe}")
+    
+    # V4 thresholds (scalping - for smaller moves)
+    else:  # version == "v4"
+        if timeframe == "1M":
+            daily = fetch_yahoo_data_indian(symbol, period="10y", interval="1d")
+            candles = resample_daily_to_monthly(daily)
+            min_candles = 40
+            rally_min = 2
+            move_min = 5  # Lower for Indian stocks
+        elif timeframe == "1w":
+            daily = fetch_yahoo_data_indian(symbol, period="5y", interval="1d")
+            candles = resample_daily_to_weekly_monday(daily)
+            min_candles = 60
+            rally_min = 3
+            move_min = 3  # Lower for Indian stocks
+        elif timeframe == "1d":
+            candles = fetch_yahoo_data_indian(symbol, period="2y", interval="1d")
+            candles.sort(key=lambda x: x["time"], reverse=True)
+            min_candles = 100
+            rally_min = 3
+            move_min = 2  # Lower for Indian stocks (2-5% daily moves)
+        elif timeframe == "4h":
+            candles = fetch_yahoo_data_indian(symbol, period="60d", interval="1h")
+            # Group into 4h candles
+            candles_4h = []
+            for i in range(0, len(candles), 4):
+                chunk = candles[i:i+4]
+                if len(chunk) == 4:
+                    candles_4h.append({
+                        "time": chunk[0]["time"],
+                        "open": chunk[0]["open"],
+                        "high": max(c["high"] for c in chunk),
+                        "low": min(c["low"] for c in chunk),
+                        "close": chunk[-1]["close"],
+                        "volume": sum(c["volume"] for c in chunk)
+                    })
+            candles = candles_4h
+            candles.sort(key=lambda x: x["time"], reverse=True)
+            min_candles = 150
+            rally_min = 3
+            move_min = 1.5  # Lower for Indian stocks
+        elif timeframe == "1h":
+            candles = fetch_yahoo_data_indian(symbol, period="60d", interval="1h")
+            candles.sort(key=lambda x: x["time"], reverse=True)
+            min_candles = 200
+            rally_min = 3
+            move_min = 1  # Lower for Indian stocks
+        else:
+            raise ValueError(f"Unsupported timeframe: {timeframe}")
+
+    print(f"[compute_zones_indian_stocks] Got {len(candles)} candles, min_candles={min_candles}")
+    
+    if len(candles) < min_candles:
+        print(f"[compute_zones_indian_stocks] Not enough candles, returning empty")
+        return []
+
+    start_offset = 1
+    max_scan = len(candles) - 35
+    scan_depth = 400 if timeframe in ["1w", "1M"] else min(400, max_scan - start_offset)
+    end_offset = min(start_offset + scan_depth, max_scan)
+
+    print(f"[compute_zones_indian_stocks] Scanning from {start_offset} to {end_offset}, rally_min={rally_min}, move_min={move_min}")
+
+    zones = []
+    for base_offset in range(start_offset, end_offset):
+        z = compute_zone_for_bar_flexible(candles, base_offset, rally_min, move_min)
+        if z:
+            z["symbol"] = symbol
+            z["timeframe"] = timeframe
+            z["zone_key"] = f"{z['top']:.8f}|{z['bottom']:.8f}"
+            zones.append(z)
+
+    # Dedupe
+    seen = set()
+    unique_zones = []
+    for z in zones:
+        key = z["zone_key"]
+        if key not in seen:
+            seen.add(key)
+            unique_zones.append(z)
+
+    return unique_zones
+
+# ====== END YAHOO FINANCE FUNCTIONS ======
+
 # Pydantic models
 class ZoneSearchRequest(BaseModel):
     symbol: str
     timeframe: Optional[str] = "1w"  # Default to weekly
     market_type: Optional[str] = "crypto"  # "crypto" or "forex"
+    version: Optional[str] = "v3"  # "v3" or "v4"
 
 class TriggerLevel(BaseModel):
     trigger_price: float
@@ -421,8 +636,9 @@ def search_zones(request: ZoneSearchRequest):
         symbol = request.symbol.strip().upper()
         timeframe = request.timeframe or "1w"
         market_type = request.market_type or "crypto"
+        version = request.version or "v3"
         
-        print(f"[SEARCH] Received: symbol={symbol}, timeframe={timeframe}, market_type={market_type}")
+        print(f"[SEARCH] Received: symbol={symbol}, timeframe={timeframe}, market_type={market_type}, version={version}")
         
         # Validate timeframe
         valid_timeframes = ["1M", "1w", "1d", "4h", "1h"]
@@ -430,7 +646,17 @@ def search_zones(request: ZoneSearchRequest):
             raise HTTPException(status_code=400, detail=f"Invalid timeframe. Must be one of: {valid_timeframes}")
         
         # Choose API based on market type
-        if market_type == "forex":
+        if market_type == "indian_stocks":
+            # Format symbol for Yahoo Finance (RELIANCE -> RELIANCE.NS)
+            original_symbol = symbol
+            if '.NS' not in symbol and '.BO' not in symbol:
+                symbol = symbol + '.NS'  # Default to NSE
+            
+            print(f"[INDIAN_STOCKS] Formatted symbol: {original_symbol} -> {symbol}")
+            zones = compute_zones_indian_stocks(symbol, timeframe, version)
+            print(f"[INDIAN_STOCKS] Found {len(zones)} zones using {version}")
+            
+        elif market_type == "forex":
             # Auto-format forex symbols (XAUUSD -> XAU/USD)
             original_symbol = symbol
             if '/' not in symbol:
@@ -442,8 +668,8 @@ def search_zones(request: ZoneSearchRequest):
                     symbol = symbol[:3] + '/' + symbol[3:]
             
             print(f"[FOREX] Formatted symbol: {original_symbol} -> {symbol}")
-            zones = compute_zones_forex(symbol, timeframe)
-            print(f"[FOREX] Found {len(zones)} zones")
+            zones = compute_zones_forex(symbol, timeframe, version)
+            print(f"[FOREX] Found {len(zones)} zones using {version}")
         else:
             # Use Delta API for crypto
             print(f"[CRYPTO] Using Delta API for {symbol}")
@@ -576,7 +802,34 @@ def get_all_scrips():
 def get_mark_price(symbol: str, market_type: Optional[str] = "crypto"):
     """Get current mark price for a symbol"""
     try:
-        if market_type == "forex":
+        if market_type == "indian_stocks":
+            # Format symbol for Yahoo Finance
+            import yfinance as yf
+            
+            formatted_symbol = symbol
+            if '.NS' not in symbol and '.BO' not in symbol:
+                formatted_symbol = symbol + '.NS'  # Default to NSE
+            
+            print(f"[PRICE] Indian Stock: {symbol} -> {formatted_symbol}")
+            
+            # Use Yahoo Finance for Indian stocks (no caching needed - fast enough)
+            ticker = yf.Ticker(formatted_symbol)
+            info = ticker.info
+            
+            # Try different price fields
+            price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose')
+            
+            if price:
+                return {
+                    "success": True,
+                    "symbol": symbol,
+                    "mark_price": float(price),
+                    "source": "yahoo_finance"
+                }
+            else:
+                raise HTTPException(status_code=404, detail=f"No price data for {formatted_symbol}")
+                
+        elif market_type == "forex":
             # Format symbol for Twelve Data (XAUUSD -> XAU/USD)
             formatted_symbol = symbol
             if '/' not in symbol:
