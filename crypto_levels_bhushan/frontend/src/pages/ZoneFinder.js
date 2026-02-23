@@ -19,10 +19,66 @@ function ZoneFinder() {
   const [searchInput, setSearchInput] = useState('');
   const [useDropdown, setUseDropdown] = useState(false); // Default to Search mode
 
+  // Nifty 50 stocks list
+  const nifty50Stocks = [
+    { symbol: 'RELIANCE', name: 'Reliance Industries' },
+    { symbol: 'TCS', name: 'Tata Consultancy Services' },
+    { symbol: 'HDFCBANK', name: 'HDFC Bank' },
+    { symbol: 'INFY', name: 'Infosys' },
+    { symbol: 'ICICIBANK', name: 'ICICI Bank' },
+    { symbol: 'HINDUNILVR', name: 'Hindustan Unilever' },
+    { symbol: 'ITC', name: 'ITC Limited' },
+    { symbol: 'SBIN', name: 'State Bank of India' },
+    { symbol: 'BHARTIARTL', name: 'Bharti Airtel' },
+    { symbol: 'KOTAKBANK', name: 'Kotak Mahindra Bank' },
+    { symbol: 'LT', name: 'Larsen & Toubro' },
+    { symbol: 'AXISBANK', name: 'Axis Bank' },
+    { symbol: 'ASIANPAINT', name: 'Asian Paints' },
+    { symbol: 'MARUTI', name: 'Maruti Suzuki' },
+    { symbol: 'SUNPHARMA', name: 'Sun Pharmaceutical' },
+    { symbol: 'TITAN', name: 'Titan Company' },
+    { symbol: 'BAJFINANCE', name: 'Bajaj Finance' },
+    { symbol: 'ULTRACEMCO', name: 'UltraTech Cement' },
+    { symbol: 'NESTLEIND', name: 'Nestle India' },
+    { symbol: 'WIPRO', name: 'Wipro' },
+    { symbol: 'HCLTECH', name: 'HCL Technologies' },
+    { symbol: 'TECHM', name: 'Tech Mahindra' },
+    { symbol: 'POWERGRID', name: 'Power Grid Corporation' },
+    { symbol: 'NTPC', name: 'NTPC Limited' },
+    { symbol: 'ONGC', name: 'Oil & Natural Gas Corporation' },
+    { symbol: 'TATAMOTORS', name: 'Tata Motors' },
+    { symbol: 'TATASTEEL', name: 'Tata Steel' },
+    { symbol: 'M&M', name: 'Mahindra & Mahindra' },
+    { symbol: 'BAJAJFINSV', name: 'Bajaj Finserv' },
+    { symbol: 'ADANIENT', name: 'Adani Enterprises' },
+    { symbol: 'ADANIPORTS', name: 'Adani Ports' },
+    { symbol: 'COALINDIA', name: 'Coal India' },
+    { symbol: 'JSWSTEEL', name: 'JSW Steel' },
+    { symbol: 'INDUSINDBK', name: 'IndusInd Bank' },
+    { symbol: 'DIVISLAB', name: 'Divi\'s Laboratories' },
+    { symbol: 'DRREDDY', name: 'Dr. Reddy\'s Laboratories' },
+    { symbol: 'CIPLA', name: 'Cipla' },
+    { symbol: 'EICHERMOT', name: 'Eicher Motors' },
+    { symbol: 'HEROMOTOCO', name: 'Hero MotoCorp' },
+    { symbol: 'GRASIM', name: 'Grasim Industries' },
+    { symbol: 'HINDALCO', name: 'Hindalco Industries' },
+    { symbol: 'BRITANNIA', name: 'Britannia Industries' },
+    { symbol: 'APOLLOHOSP', name: 'Apollo Hospitals' },
+    { symbol: 'BPCL', name: 'Bharat Petroleum' },
+    { symbol: 'TATACONSUM', name: 'Tata Consumer Products' },
+    { symbol: 'SBILIFE', name: 'SBI Life Insurance' },
+    { symbol: 'HDFCLIFE', name: 'HDFC Life Insurance' },
+    { symbol: 'BAJAJ-AUTO', name: 'Bajaj Auto' },
+    { symbol: 'SHREECEM', name: 'Shree Cement' },
+    { symbol: 'LTIM', name: 'LTIMindtree' }
+  ];
+
   // Fetch available symbols on mount
   useEffect(() => {
-    fetchAvailableSymbols();
-  }, []);
+    if (marketType === 'crypto') {
+      fetchAvailableSymbols();
+    }
+  }, [marketType]);
 
   const fetchAvailableSymbols = async () => {
     setLoadingSymbols(true);
@@ -229,60 +285,77 @@ function ZoneFinder() {
             <div className="input-group symbol-input-group">
               <label>Select Symbol</label>
               
-              <div className="symbol-mode-toggle">
-                <button 
-                  className={`mode-btn ${useDropdown ? 'active' : ''}`}
-                  onClick={() => setUseDropdown(true)}
-                >
-                  📋 Dropdown
-                </button>
-                <button 
-                  className={`mode-btn ${!useDropdown ? 'active' : ''}`}
-                  onClick={() => setUseDropdown(false)}
-                >
-                  🔍 Search
-                </button>
-              </div>
-
-              {useDropdown ? (
+              {marketType === 'indian_stocks' ? (
+                // Show Nifty 50 dropdown for Indian stocks
                 <select
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="symbol-dropdown"
-                  disabled={loadingSymbols}
                 >
-                  <option value="">-- Select a Symbol --</option>
-                  {availableSymbols.map((sym) => (
-                    <option key={sym} value={sym}>
-                      {sym}
+                  <option value="">-- Select Nifty 50 Stock --</option>
+                  {nifty50Stocks.map((stock) => (
+                    <option key={stock.symbol} value={stock.symbol}>
+                      {stock.symbol} - {stock.name}
                     </option>
                   ))}
                 </select>
               ) : (
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value.toUpperCase())}
-                  placeholder={
-                    marketType === 'indian_stocks' 
-                      ? "Enter symbol (e.g., RELIANCE, TCS, INFY)" 
-                      : marketType === 'forex'
-                      ? "Enter symbol (e.g., EURUSD, XAUUSD)"
-                      : "Enter symbol (e.g., BTCUSDT)"
-                  }
-                  className="symbol-search-input"
-                  onKeyPress={(e) => e.key === 'Enter' && searchZones()}
-                />
-              )}
-              
-              {useDropdown && (
-                <button 
-                  onClick={fetchAvailableSymbols} 
-                  disabled={loadingSymbols}
-                  className="btn-refresh-symbols"
-                >
-                  {loadingSymbols ? '⏳' : '🔄'} Refresh List
-                </button>
+                // Show original dropdown/search for crypto/forex
+                <>
+                  <div className="symbol-mode-toggle">
+                    <button 
+                      className={`mode-btn ${useDropdown ? 'active' : ''}`}
+                      onClick={() => setUseDropdown(true)}
+                    >
+                      📋 Dropdown
+                    </button>
+                    <button 
+                      className={`mode-btn ${!useDropdown ? 'active' : ''}`}
+                      onClick={() => setUseDropdown(false)}
+                    >
+                      🔍 Search
+                    </button>
+                  </div>
+
+                  {useDropdown ? (
+                    <select
+                      value={symbol}
+                      onChange={(e) => setSymbol(e.target.value)}
+                      className="symbol-dropdown"
+                      disabled={loadingSymbols}
+                    >
+                      <option value="">-- Select a Symbol --</option>
+                      {availableSymbols.map((sym) => (
+                        <option key={sym} value={sym}>
+                          {sym}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value.toUpperCase())}
+                      placeholder={
+                        marketType === 'forex'
+                        ? "Enter symbol (e.g., EURUSD, XAUUSD)"
+                        : "Enter symbol (e.g., BTCUSDT)"
+                      }
+                      className="symbol-search-input"
+                      onKeyPress={(e) => e.key === 'Enter' && searchZones()}
+                    />
+                  )}
+                  
+                  {useDropdown && (
+                    <button 
+                      onClick={fetchAvailableSymbols} 
+                      disabled={loadingSymbols}
+                      className="btn-refresh-symbols"
+                    >
+                      {loadingSymbols ? '⏳' : '🔄'} Refresh List
+                    </button>
+                  )}
+                </>
               )}
             </div>
 
@@ -341,14 +414,14 @@ function ZoneFinder() {
           <div className="search-row">
             <button 
               onClick={searchZones} 
-              disabled={loading || (useDropdown ? !symbol : !searchInput.trim())}
+              disabled={loading || (marketType === 'indian_stocks' ? !searchInput.trim() : (useDropdown ? !symbol : !searchInput.trim()))}
               className="btn-primary"
             >
               {loading ? '⏳ Searching...' : '🔍 Find Support Zones'}
             </button>
             <button 
               onClick={openDeltaExchange}
-              disabled={useDropdown ? !symbol : !searchInput.trim()}
+              disabled={marketType === 'indian_stocks' ? !searchInput.trim() : (useDropdown ? !symbol : !searchInput.trim())}
               className="btn-delta"
             >
               📈 Open on Delta
