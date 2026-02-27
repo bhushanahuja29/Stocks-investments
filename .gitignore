@@ -108,3 +108,20 @@ v3_gui*.py
 twelvedata_levels_finder*.py
 yahoo_levels_finder.py
 v3.py
+
+# Chrome profile and browser data
+chrome_profile_copy/
+chrome_profile/
+*_profile/
+
+# Screenshots and images
+tradingview_screenshots/
+screenshots/
+*.png
+*.jpg
+*.jpeg
+!crypto_levels_bhushan/frontend/public/*.png
+
+# Auto-generated JSON files
+auto_scrape_progress.json
+tradingview_levels_*.json

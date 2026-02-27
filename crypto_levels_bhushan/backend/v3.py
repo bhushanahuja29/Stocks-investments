@@ -18,7 +18,7 @@ MONGO_DB = os.getenv("MONGO_DB", "sr_levels")
 MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "zones")
 
 # MongoDB connection string - can be overridden via MONGO_URI env var
-MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://Bhushan:BhushanDelta@deltapricetracker.y0ipzbf.mongodb.net/?appName=DeltaPriceTracker")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://bhushanstonks_db_user:61qQn4sCqnosMmuB@deltapricetracker.zzpfett.mongodb.net/?appName=DeltaPriceTracker")
 
 try:
     mongo = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
