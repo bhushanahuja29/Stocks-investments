@@ -12,6 +12,7 @@ import './App_Premium.css';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshNavbar, setRefreshNavbar] = useState(0);
 
   // Check if user is logged in on mount
   useEffect(() => {
@@ -36,6 +37,10 @@ function App() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+  };
+
+  const triggerNavbarRefresh = () => {
+    setRefreshNavbar(prev => prev + 1);
   };
 
   // Show loading state
@@ -70,7 +75,7 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <Navbar user={user} onLogout={handleLogout} />
+        <Navbar user={user} onLogout={handleLogout} refreshTrigger={refreshNavbar} />
         
         <Routes>
           {/* Admin routes */}
@@ -80,8 +85,8 @@ function App() {
           
           {/* User routes */}
           <Route path="/zone-finder" element={<ZoneFinder />} />
-          <Route path="/monitor" element={<MonitorPremium />} />
-          <Route path="/monitor-classic" element={<Monitor />} />
+          <Route path="/monitor" element={<MonitorPremium onNavbarRefresh={triggerNavbarRefresh} />} />
+          <Route path="/monitor-classic" element={<Monitor onNavbarRefresh={triggerNavbarRefresh} />} />
           
           {/* Default redirect based on role */}
           <Route 

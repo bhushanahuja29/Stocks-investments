@@ -4,7 +4,7 @@ import './Monitor_Premium.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-function MonitorPremium() {
+function MonitorPremium({ onNavbarRefresh }) {
   const [scrips, setScrips] = useState([]);
   const [selectedScrip, setSelectedScrip] = useState(null);
   const [prices, setPrices] = useState({});
@@ -87,7 +87,33 @@ function MonitorPremium() {
       const response = await axios.get(`${API_URL}/api/scrips`);
       if (response.data.success) {
         setScrips(response.data.scrips);
-        if (response.data.scrips.length > 0 && !selectedScrip) {
+        
+        // Check if we should auto-select a symbol from notification click
+        const selectedSymbol = sessionStorage.getItem('selectedSymbol');
+        const selectedLevelIndex = sessionStorage.getItem('selectedLevelIndex');
+        
+        if (selectedSymbol && response.data.scrips.length > 0) {
+          const scripToSelect = response.data.scrips.find(s => s.symbol === selectedSymbol);
+          if (scripToSelect) {
+            setSelectedScrip(scripToSelect);
+            
+            // Scroll to the level if index is provided
+            if (selectedLevelIndex !== null) {
+              setTimeout(() => {
+                const levelElement = document.querySelector(`[data-level-index="${selectedLevelIndex}"]`);
+                if (levelElement) {
+                  levelElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  levelElement.classList.add('highlight-level');
+                  setTimeout(() => levelElement.classList.remove('highlight-level'), 2000);
+                }
+              }, 500);
+            }
+            
+            // Clear sessionStorage
+            sessionStorage.removeItem('selectedSymbol');
+            sessionStorage.removeItem('selectedLevelIndex');
+          }
+        } else if (response.data.scrips.length > 0 && !selectedScrip) {
           setSelectedScrip(response.data.scrips[0]);
         }
       }
@@ -182,6 +208,11 @@ function MonitorPremium() {
 
         const statusText = newDisabledStatus ? 'disabled' : 'enabled';
         showToast(`Alert ${statusText}`, 'success');
+        
+        // Refresh navbar notification count
+        if (onNavbarRefresh) {
+          onNavbarRefresh();
+        }
       }
     } catch (error) {
       console.error('Error toggling alert:', error);
@@ -436,6 +467,7 @@ function MonitorPremium() {
                     <div 
                       key={level.originalIndex} 
                       className={`level-card ${distance?.triggered ? 'triggered' : ''} fade-in`}
+                      data-level-index={level.originalIndex}
                     >
                       <div className="level-card-header">
                         <div className="level-meta">

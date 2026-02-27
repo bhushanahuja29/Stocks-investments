@@ -4,7 +4,7 @@ import './Monitor.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-function Monitor() {
+function Monitor({ onNavbarRefresh }) {
   const [scrips, setScrips] = useState([]);
   const [selectedScrip, setSelectedScrip] = useState(null);
   const [prices, setPrices] = useState({}); // Store prices for all scrips
@@ -182,6 +182,11 @@ function Monitor() {
         // Show toast notification
         const statusText = newDisabledStatus ? 'disabled' : 'enabled';
         showToast(`Level ${levelIndex + 1} alert ${statusText}`, 'success');
+        
+        // Refresh navbar notification count
+        if (onNavbarRefresh) {
+          onNavbarRefresh();
+        }
         
         console.log(`UI updated: alert_disabled=${newDisabledStatus}`);
       }
