@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './AdminUsers.css';
 
-const API_URL = process.env.REACT_APP_API_URL || '${API_URL}';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -23,7 +23,7 @@ function AdminUsers() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('${API_URL}/api/admin/users', {
+      const response = await fetch(`${API_URL}/api/admin/users`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -43,7 +43,7 @@ function AdminUsers() {
     const token = localStorage.getItem('token');
     
     try {
-      const response = await fetch('${API_URL}/api/admin/users', {
+      const response = await fetch(`${API_URL}/api/admin/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
