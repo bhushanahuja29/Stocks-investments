@@ -261,6 +261,22 @@ function MonitorPremium({ onNavbarRefresh }) {
     return scrip.market_type === marketFilter;
   });
 
+  // Debug logging
+  console.log('Market Filter:', marketFilter);
+  console.log('Total Scrips:', scrips.length);
+  console.log('Filtered Scrips:', filteredScrips.length);
+  console.log('All scrips:', scrips.map(s => ({ symbol: s.symbol, market_type: s.market_type })));
+
+  // Ensure selected scrip is in filtered list
+  useEffect(() => {
+    if (selectedScrip && !filteredScrips.find(s => s.symbol === selectedScrip.symbol)) {
+      if (filteredScrips.length > 0) {
+        console.log('Auto-switching to first filtered scrip:', filteredScrips[0].symbol);
+        setSelectedScrip(filteredScrips[0]);
+      }
+    }
+  }, [marketFilter, filteredScrips, selectedScrip]);
+
   // Filter levels by timeframe
   const filteredLevels = selectedScrip?.trigger_levels ? 
     selectedScrip.trigger_levels.filter(level => 
@@ -346,8 +362,17 @@ function MonitorPremium({ onNavbarRefresh }) {
               💱 Forex
             </button>
             <button
-              className={`market-tab ${marketFilter === 'stocks' ? 'active' : ''}`}
-              onClick={() => setMarketFilter('stocks')}
+              className={`market-tab ${marketFilter === 'indian_stock' ? 'active' : ''}`}
+              onClick={() => {
+                console.log('Clicked Stocks filter');
+                setMarketFilter('indian_stock');
+                const stockScrips = scrips.filter(s => s.market_type === 'indian_stock');
+                console.log('Stock scrips found:', stockScrips.map(s => s.symbol));
+                if (stockScrips.length > 0) {
+                  console.log('Setting selected scrip to:', stockScrips[0].symbol);
+                  setSelectedScrip(stockScrips[0]);
+                }
+              }}
             >
               📈 Stocks
             </button>
@@ -405,7 +430,7 @@ function MonitorPremium({ onNavbarRefresh }) {
                   {selectedScrip.symbol}
                   <span className="market-badge">
                     {selectedScrip.market_type === 'forex' ? '💱 Forex' : 
-                     selectedScrip.market_type === 'stocks' ? '📈 Stocks' : '🪙 Crypto'}
+                     selectedScrip.market_type === 'indian_stock' ? '📈 Indian Stock' : '🪙 Crypto'}
                   </span>
                 </div>
                 <button 
@@ -429,7 +454,8 @@ function MonitorPremium({ onNavbarRefresh }) {
                   <span>Live • {lastUpdate[selectedScrip.symbol] || '--:--:--'}</span>
                 </div>
                 <span>
-                  {selectedScrip.market_type === 'forex' ? 'Twelve Data API' : 'Delta Exchange'}
+                  {selectedScrip.market_type === 'forex' ? 'Twelve Data API' : 
+                   selectedScrip.market_type === 'indian_stock' ? 'Yahoo Finance' : 'Delta Exchange'}
                 </span>
               </div>
             </div>

@@ -19,7 +19,7 @@ backend_dir = Path(__file__).parent
 sys.path.insert(0, str(backend_dir))
 
 # Import v3 functions
-from v3 import compute_zones_for_symbol, ts_str, fnum, is_green, is_red, body_size, START_YEAR_TS
+from v3 import compute_zones_for_symbol, ts_str, fnum, is_green, is_red, body_size, START_YEAR_TS, delta_get
 
 # Twelve Data API Configuration
 TWELVE_DATA_API_KEY = os.getenv("TWELVE_DATA_API_KEY", "b455fff947db40efb714b37b4873b135")
@@ -399,6 +399,155 @@ def compute_zones_forex(symbol: str, timeframe: str = "1w", version: str = "v3")
     return unique_zones
 
 # ====== END TWELVE DATA FUNCTIONS ======
+
+# ====== DELTA API FUNCTIONS FOR CRYPTO ======
+
+def fetch_delta_candles(symbol: str, resolution: str, weeks_back: int = 600):
+    """Fetch candles from Delta Exchange API with specified resolution"""
+    import time
+    
+    end = int(time.time())
+    start = end - weeks_back * 7 * 24 * 3600
+    
+    # Map timeframe to Delta resolution
+    resolution_map = {
+        "1M": "1month",
+        "1w": "1w",
+        "1d": "1d",
+        "4h": "4h",
+        "1h": "1h"
+    }
+    
+    delta_resolution = resolution_map.get(resolution, "1d")
+    
+    params = {
+        "resolution": delta_resolution,
+        "symbol": symbol,
+        "start": start,
+        "end": end
+    }
+    
+    data = delta_get("/v2/history/candles", params)
+    
+    if not isinstance(data, dict) or "result" not in data:
+        return []
+    
+    candles = []
+    for item in data["result"]:
+        candles.append({
+            "time": item["time"],
+            "open": fnum(item["open"]),
+            "high": fnum(item["high"]),
+            "low": fnum(item["low"]),
+            "close": fnum(item["close"]),
+            "volume": fnum(item.get("volume"), 0.0),
+        })
+    
+    candles.sort(key=lambda x: x["time"])
+    return candles
+
+
+def compute_zones_crypto_with_timeframe(symbol: str, timeframe: str, version: str = "v3"):
+    """Compute zones for crypto using Delta API with specified timeframe"""
+    print(f"[compute_zones_crypto] symbol={symbol}, timeframe={timeframe}, version={version}")
+    
+    # V3 thresholds (original)
+    if version == "v3":
+        if timeframe == "1M":
+            candles = fetch_delta_candles(symbol, "1M", weeks_back=600)
+            min_candles = 40
+            rally_min = 2
+            move_min = 15
+        elif timeframe == "1w":
+            candles = fetch_delta_candles(symbol, "1w", weeks_back=600)
+            min_candles = 60
+            rally_min = 3
+            move_min = 10
+        elif timeframe == "1d":
+            candles = fetch_delta_candles(symbol, "1d", weeks_back=600)
+            min_candles = 100
+            rally_min = 3
+            move_min = 8
+        elif timeframe == "4h":
+            candles = fetch_delta_candles(symbol, "4h", weeks_back=120)
+            min_candles = 150
+            rally_min = 4
+            move_min = 6
+        elif timeframe == "1h":
+            candles = fetch_delta_candles(symbol, "1h", weeks_back=60)
+            min_candles = 200
+            rally_min = 5
+            move_min = 5
+        else:
+            raise ValueError(f"Unsupported timeframe: {timeframe}")
+    
+    # V4 thresholds (scalping - lower thresholds)
+    else:  # version == "v4"
+        if timeframe == "1M":
+            candles = fetch_delta_candles(symbol, "1M", weeks_back=600)
+            min_candles = 40
+            rally_min = 2
+            move_min = 5
+        elif timeframe == "1w":
+            candles = fetch_delta_candles(symbol, "1w", weeks_back=600)
+            min_candles = 60
+            rally_min = 3
+            move_min = 3
+        elif timeframe == "1d":
+            candles = fetch_delta_candles(symbol, "1d", weeks_back=600)
+            min_candles = 100
+            rally_min = 3
+            move_min = 2
+        elif timeframe == "4h":
+            candles = fetch_delta_candles(symbol, "4h", weeks_back=120)
+            min_candles = 150
+            rally_min = 3
+            move_min = 1.5
+        elif timeframe == "1h":
+            candles = fetch_delta_candles(symbol, "1h", weeks_back=60)
+            min_candles = 200
+            rally_min = 3
+            move_min = 1
+        else:
+            raise ValueError(f"Unsupported timeframe: {timeframe}")
+
+    print(f"[compute_zones_crypto] Got {len(candles)} candles, min_candles={min_candles}")
+    
+    if len(candles) < min_candles:
+        print(f"[compute_zones_crypto] Not enough candles, returning empty")
+        return []
+
+    # Reverse to most recent first
+    candles.sort(key=lambda x: x["time"], reverse=True)
+
+    start_offset = 1
+    max_scan = len(candles) - 35
+    scan_depth = 400 if timeframe in ["1w", "1M"] else min(400, max_scan - start_offset)
+    end_offset = min(start_offset + scan_depth, max_scan)
+
+    print(f"[compute_zones_crypto] Scanning from {start_offset} to {end_offset}, rally_min={rally_min}, move_min={move_min}")
+
+    zones = []
+    for base_offset in range(start_offset, end_offset):
+        z = compute_zone_for_bar_flexible(candles, base_offset, rally_min, move_min)
+        if z:
+            z["symbol"] = symbol
+            z["timeframe"] = timeframe
+            z["zone_key"] = f"{z['top']:.8f}|{z['bottom']:.8f}"
+            zones.append(z)
+
+    # Dedupe
+    seen = set()
+    unique_zones = []
+    for z in zones:
+        key = z["zone_key"]
+        if key not in seen:
+            seen.add(key)
+            unique_zones.append(z)
+
+    return unique_zones
+
+# ====== END DELTA API FUNCTIONS ======
 
 # ====== YAHOO FINANCE FUNCTIONS FOR INDIAN STOCKS ======
 
@@ -936,7 +1085,7 @@ def search_zones(request: ZoneSearchRequest):
             raise HTTPException(status_code=400, detail=f"Invalid timeframe. Must be one of: {valid_timeframes}")
         
         # Choose API based on market type
-        if market_type == "indian_stocks":
+        if market_type in ["indian_stocks", "indian_stock"]:
             # Format symbol for Yahoo Finance (RELIANCE -> RELIANCE.NS)
             original_symbol = symbol
             if '.NS' not in symbol and '.BO' not in symbol:
@@ -963,7 +1112,7 @@ def search_zones(request: ZoneSearchRequest):
         else:
             # Use Delta API for crypto
             print(f"[CRYPTO] Using Delta API for {symbol}")
-            zones = compute_zones_for_symbol(symbol, timeframe)
+            zones = compute_zones_crypto_with_timeframe(symbol, timeframe, version)
             print(f"[CRYPTO] Found {len(zones)} zones")
         
         # Format zones for frontend
@@ -1092,7 +1241,8 @@ def get_all_scrips():
 def get_mark_price(symbol: str, market_type: Optional[str] = "crypto"):
     """Get current mark price for a symbol"""
     try:
-        if market_type == "indian_stocks":
+        # Handle both singular and plural forms
+        if market_type in ["indian_stocks", "indian_stock"]:
             # Format symbol for Yahoo Finance
             import yfinance as yf
             

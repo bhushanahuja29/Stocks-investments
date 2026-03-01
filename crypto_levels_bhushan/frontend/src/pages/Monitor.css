@@ -91,6 +91,44 @@
   font-size: 0.9rem;
 }
 
+/* Market Type Filter Buttons */
+.market-type-filter {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.market-filter-btn {
+  flex: 1;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 2px solid #E0E0E0;
+  border-radius: 8px;
+  background: white;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.market-filter-btn:hover {
+  border-color: #2196F3;
+  color: #2196F3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.2);
+}
+
+.market-filter-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
 .tabs {
   display: flex;
   gap: 0.5rem;
@@ -169,6 +207,19 @@
   font-size: 2rem;
   color: #212121;
   margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.market-type-badge {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
 }
 
 .level-count {
@@ -378,6 +429,14 @@
     flex-direction: column;
     gap: 0.5rem;
     text-align: center;
+  }
+  
+  .market-type-filter {
+    flex-direction: column;
+  }
+  
+  .market-filter-btn {
+    width: 100%;
   }
   
   .level-card {

@@ -186,19 +186,25 @@ function Navbar({ user, onLogout, refreshTrigger }) {
           </div>
         </div>
 
-        {user.role === 'admin' && (
-          <button 
-            className="hamburger"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle menu"
-          >
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
-        )}
+        <button 
+          className="hamburger"
+          onClick={() => setMenuOpen(!menuOpen)}
+          aria-label="Toggle menu"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
 
         <div className={`navbar-menu ${menuOpen ? 'open' : ''}`}>
+          <button 
+            className="close-menu-btn"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
+          
           <div className="nav-links">
             <Link 
               to="/monitor" 
@@ -322,7 +328,7 @@ function Navbar({ user, onLogout, refreshTrigger }) {
         </div>
 
         {menuOpen && (
-          <div className="menu-overlay" onClick={() => setMenuOpen(false)}></div>
+          <div className="menu-overlay show" onClick={() => setMenuOpen(false)}></div>
         )}
       </div>
     </nav>

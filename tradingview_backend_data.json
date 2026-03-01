@@ -1,0 +1,297 @@
+{
+  "BHARTIARTL": {
+    "symbol": "BHARTIARTL",
+    "timeframe": "1W",
+    "zones": [
+      {
+        "top": 1740.0,
+        "bottom": 1705.2,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 1122.9,
+        "bottom": 1100.442,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 995.0,
+        "bottom": 975.1,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 530.9,
+        "bottom": 520.2819999999999,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 484.85,
+        "bottom": 475.153,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 481.85,
+        "bottom": 472.213,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      }
+    ],
+    "count": 6,
+    "success": true,
+    "source": "tradingview",
+    "screenshot": "tradingview_screenshots/BHARTIARTL_NSE.png",
+    "timestamp": "2026-03-01 20:37:46"
+  },
+  "HDFCBANK": {
+    "symbol": "HDFCBANK",
+    "timeframe": "1W",
+    "zones": [
+      {
+        "top": 765.75,
+        "bottom": 750.435,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      }
+    ],
+    "count": 1,
+    "success": true,
+    "source": "tradingview",
+    "screenshot": "tradingview_screenshots/HDFCBANK_NSE.png",
+    "timestamp": "2026-03-01 20:37:52"
+  },
+  "ICICIBANK": {
+    "symbol": "ICICIBANK",
+    "timeframe": "1W",
+    "zones": [
+      {
+        "top": 1116.0,
+        "bottom": 1093.68,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 755.0,
+        "bottom": 739.9,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 726.75,
+        "bottom": 712.215,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 545.15,
+        "bottom": 534.247,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      }
+    ],
+    "count": 4,
+    "success": true,
+    "source": "tradingview",
+    "screenshot": "tradingview_screenshots/ICICIBANK_NSE.png",
+    "timestamp": "2026-03-01 20:38:00"
+  },
+  "RELIANCE": {
+    "symbol": "RELIANCE",
+    "timeframe": "1W",
+    "zones": [
+      {
+        "top": 1483.0,
+        "bottom": 1453.34,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 1466.15,
+        "bottom": 1436.827,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 1291.0,
+        "bottom": 1265.18,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 1216.55,
+        "bottom": 1192.2189999999998,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 1166.15,
+        "bottom": 1142.827,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 1107.2,
+        "bottom": 1085.056,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 1086.75,
+        "bottom": 1065.0149999999999,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 975.65,
+        "bottom": 956.137,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 880.15,
+        "bottom": 862.5469999999999,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 880.1,
+        "bottom": 862.498,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 805.0,
+        "bottom": 788.9,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      }
+    ],
+    "count": 11,
+    "success": true,
+    "source": "tradingview",
+    "screenshot": "tradingview_screenshots/RELIANCE_NSE.png",
+    "timestamp": "2026-03-01 20:38:07"
+  },
+  "SBIN": {
+    "symbol": "SBIN",
+    "timeframe": "1W",
+    "zones": [
+      {
+        "top": 1035.0,
+        "bottom": 1014.3,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 862.0,
+        "bottom": 844.76,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 564.0,
+        "bottom": 552.72,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 459.0,
+        "bottom": 449.82,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 360.5,
+        "bottom": 353.29,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 344.0,
+        "bottom": 337.12,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 268.45,
+        "bottom": 263.08099999999996,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      },
+      {
+        "top": 199.7,
+        "bottom": 195.706,
+        "date": "2026-03-01",
+        "rally_length": 1,
+        "total_move_pct": 0,
+        "source": "tradingview_scraper"
+      }
+    ],
+    "count": 8,
+    "success": true,
+    "source": "tradingview",
+    "screenshot": "tradingview_screenshots/SBIN_NSE.png",
+    "timestamp": "2026-03-01 20:38:13"
+  }
+}

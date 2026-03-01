@@ -31,15 +31,28 @@ def convert_to_backend_format(tv_data):
     """Convert TradingView data to backend zone format"""
     backend_data = {}
     
-    for symbol, stock_data in tv_data.items():
-        levels = stock_data.get('levels', [])
+    # Handle both list and dict formats
+    if isinstance(tv_data, list):
+        stock_list = tv_data
+    else:
+        stock_list = list(tv_data.values())
+    
+    for stock_data in stock_list:
+        symbol = stock_data.get('symbol')
+        if not symbol:
+            continue
+            
+        # Get support and resistance levels
+        support_levels = stock_data.get('support_levels', [])
+        resistance_levels = stock_data.get('resistance_levels', [])
+        levels = support_levels + resistance_levels
         
         if not levels:
             continue
         
         # Convert levels to zones (each level becomes a zone)
         zones = []
-        for i, level in enumerate(levels):
+        for level in levels:
             zone = {
                 'top': level,
                 'bottom': level * 0.98,  # 2% below as zone bottom
@@ -52,10 +65,10 @@ def convert_to_backend_format(tv_data):
         
         backend_data[symbol] = {
             'symbol': symbol,
-            'timeframe': stock_data.get('timeframe', '1W'),
+            'timeframe': '1W',  # Default timeframe
             'zones': zones,
             'count': len(zones),
-            'success': True,
+            'success': stock_data.get('success', True),
             'source': 'tradingview',
             'screenshot': stock_data.get('screenshot', ''),
             'timestamp': stock_data.get('timestamp', '')
@@ -138,16 +151,38 @@ def main():
     print("📊 TradingView Data Summary")
     print("="*60)
     
-    for symbol, data in list(tv_data.items())[:5]:  # Show first 5
-        levels = data.get('levels', [])
-        print(f"\n{symbol}:")
-        print(f"  Timeframe: {data.get('timeframe', 'N/A')}")
-        print(f"  Levels: {len(levels)}")
-        if levels:
-            print(f"  Sample: {levels[:3]}")
+    # Handle both list and dict formats
+    if isinstance(tv_data, list):
+        data_to_show = tv_data[:5]  # Show first 5
+        total_count = len(tv_data)
+    else:
+        data_to_show = list(tv_data.items())[:5]
+        total_count = len(tv_data)
     
-    if len(tv_data) > 5:
-        print(f"\n... and {len(tv_data) - 5} more stocks")
+    for item in data_to_show:
+        if isinstance(item, dict):
+            # List format
+            symbol = item.get('symbol', 'Unknown')
+            support_levels = item.get('support_levels', [])
+            resistance_levels = item.get('resistance_levels', [])
+            levels = support_levels + resistance_levels
+            print(f"\n{symbol}:")
+            print(f"  Support Levels: {len(support_levels)}")
+            print(f"  Resistance Levels: {len(resistance_levels)}")
+            if levels:
+                print(f"  Sample: {levels[:3]}")
+        else:
+            # Dict format (symbol, data tuple)
+            symbol, data = item
+            levels = data.get('levels', [])
+            print(f"\n{symbol}:")
+            print(f"  Timeframe: {data.get('timeframe', 'N/A')}")
+            print(f"  Levels: {len(levels)}")
+            if levels:
+                print(f"  Sample: {levels[:3]}")
+    
+    if total_count > 5:
+        print(f"\n... and {total_count - 5} more stocks")
     
     # Convert to backend format
     print("\n" + "="*60)
@@ -167,7 +202,7 @@ def main():
     integration_code = generate_backend_integration_code()
     
     # Save integration code
-    with open('backend_integration_code.py', 'w') as f:
+    with open('backend_integration_code.py', 'w', encoding='utf-8') as f:
         f.write(integration_code)
     
     print("\n✅ Integration code saved to: backend_integration_code.py")

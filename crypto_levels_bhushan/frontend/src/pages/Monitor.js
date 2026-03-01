@@ -13,6 +13,7 @@ function Monitor({ onNavbarRefresh }) {
   const [toast, setToast] = useState(null);
   const [notificationPermission, setNotificationPermission] = useState('default');
   const [timeframeFilter, setTimeframeFilter] = useState('all');
+  const [marketTypeFilter, setMarketTypeFilter] = useState('all');
 
   // Request notification permission on mount
   useEffect(() => {
@@ -240,6 +241,26 @@ function Monitor({ onNavbarRefresh }) {
 
   const currentPrice = selectedScrip ? prices[selectedScrip.symbol] : null;
 
+  // Filter scrips by market type
+  const filteredScrips = scrips.filter(scrip => 
+    marketTypeFilter === 'all' || scrip.market_type === marketTypeFilter
+  );
+
+  // Debug logging
+  console.log('Market Type Filter:', marketTypeFilter);
+  console.log('Total Scrips:', scrips.length);
+  console.log('Filtered Scrips:', filteredScrips.length);
+  console.log('Scrips by market type:', scrips.map(s => ({ symbol: s.symbol, market_type: s.market_type })));
+
+  // Ensure selected scrip is in filtered list
+  useEffect(() => {
+    if (selectedScrip && !filteredScrips.find(s => s.symbol === selectedScrip.symbol)) {
+      if (filteredScrips.length > 0) {
+        setSelectedScrip(filteredScrips[0]);
+      }
+    }
+  }, [marketTypeFilter, filteredScrips, selectedScrip]);
+
   // Filter levels by timeframe
   const filteredLevels = selectedScrip?.trigger_levels ? 
     selectedScrip.trigger_levels.filter(level => 
@@ -315,12 +336,80 @@ function Monitor({ onNavbarRefresh }) {
           </span>
         </div>
 
+        <div className="market-type-filter">
+          <button 
+            className={`market-filter-btn ${marketTypeFilter === 'all' ? 'active' : ''}`}
+            onClick={() => {
+              console.log('Clicked All Markets');
+              setMarketTypeFilter('all');
+              if (scrips.length > 0) {
+                console.log('Setting selected scrip to:', scrips[0].symbol);
+                setSelectedScrip(scrips[0]);
+              }
+            }}
+          >
+            All Markets
+          </button>
+          <button 
+            className={`market-filter-btn ${marketTypeFilter === 'crypto' ? 'active' : ''}`}
+            onClick={() => {
+              console.log('Clicked Crypto');
+              setMarketTypeFilter('crypto');
+              const cryptoScrips = scrips.filter(s => s.market_type === 'crypto');
+              console.log('Crypto scrips:', cryptoScrips.map(s => s.symbol));
+              if (cryptoScrips.length > 0) {
+                console.log('Setting selected scrip to:', cryptoScrips[0].symbol);
+                setSelectedScrip(cryptoScrips[0]);
+              }
+            }}
+          >
+            🪙 Crypto
+          </button>
+          <button 
+            className={`market-filter-btn ${marketTypeFilter === 'forex' ? 'active' : ''}`}
+            onClick={() => {
+              console.log('Clicked Forex');
+              setMarketTypeFilter('forex');
+              const forexScrips = scrips.filter(s => s.market_type === 'forex');
+              console.log('Forex scrips:', forexScrips.map(s => s.symbol));
+              if (forexScrips.length > 0) {
+                console.log('Setting selected scrip to:', forexScrips[0].symbol);
+                setSelectedScrip(forexScrips[0]);
+              }
+            }}
+          >
+            💱 Forex
+          </button>
+          <button 
+            className={`market-filter-btn ${marketTypeFilter === 'indian_stock' ? 'active' : ''}`}
+            onClick={() => {
+              console.log('Clicked Stocks');
+              setMarketTypeFilter('indian_stock');
+              const stockScrips = scrips.filter(s => s.market_type === 'indian_stock');
+              console.log('Stock scrips:', stockScrips.map(s => s.symbol));
+              if (stockScrips.length > 0) {
+                console.log('Setting selected scrip to:', stockScrips[0].symbol);
+                setSelectedScrip(stockScrips[0]);
+              } else {
+                console.log('No stock scrips found!');
+              }
+            }}
+          >
+            📈 Stocks
+          </button>
+        </div>
+
         <div className="tabs">
-          {scrips.map((scrip) => {
+          {filteredScrips.map((scrip) => {
             const scripPrice = prices[scrip.symbol];
             const hasTriggered = scrip.trigger_levels?.some(level => 
               scripPrice && scripPrice <= level.trigger_price && !level.alert_disabled
             );
+            
+            // Get market type icon
+            const marketIcon = scrip.market_type === 'crypto' ? '🪙' :
+                              scrip.market_type === 'forex' ? '💱' :
+                              scrip.market_type === 'indian_stock' ? '📈' : '❓';
             
             return (
               <button
@@ -329,7 +418,7 @@ function Monitor({ onNavbarRefresh }) {
                 onClick={() => setSelectedScrip(scrip)}
               >
                 {hasTriggered && '🔔 '}
-                {scrip.symbol} ({scrip.trigger_levels?.length || 0})
+                {marketIcon} {scrip.symbol} ({scrip.trigger_levels?.length || 0})
               </button>
             );
           })}
@@ -343,7 +432,14 @@ function Monitor({ onNavbarRefresh }) {
             <div className="header-section">
               <div className="header-top">
                 <div>
-                  <h1>Symbol: {selectedScrip.symbol}</h1>
+                  <h1>
+                    Symbol: {selectedScrip.symbol}
+                    <span className="market-type-badge">
+                      {selectedScrip.market_type === 'crypto' && '🪙 Crypto'}
+                      {selectedScrip.market_type === 'forex' && '💱 Forex'}
+                      {selectedScrip.market_type === 'indian_stock' && '📈 Indian Stock'}
+                    </span>
+                  </h1>
                   <p className="level-count">{selectedScrip.trigger_levels?.length || 0} Support Levels</p>
                 </div>
                 <button 
@@ -370,7 +466,9 @@ function Monitor({ onNavbarRefresh }) {
                 </h2>
                 {currentPrice && (
                   <p className="price-source">
-                    {selectedScrip.market_type === 'forex' ? '💱 Twelve Data' : '🪙 Delta Exchange'}
+                    {selectedScrip.market_type === 'forex' ? '💱 Twelve Data' : 
+                     selectedScrip.market_type === 'indian_stock' ? '📈 Yahoo Finance' : 
+                     '🪙 Delta Exchange'}
                   </p>
                 )}
               </div>
