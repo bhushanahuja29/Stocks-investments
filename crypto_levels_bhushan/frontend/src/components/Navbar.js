@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './Navbar.css';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
 function Navbar({ user, onLogout, refreshTrigger }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState('default');
@@ -24,7 +26,7 @@ function Navbar({ user, onLogout, refreshTrigger }) {
   useEffect(() => {
     const fetchTriggeredCount = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/scrips');
+        const response = await fetch(`${API_URL}/api/scrips`);
         const data = await response.json();
         
         if (data.success) {
@@ -35,7 +37,7 @@ function Navbar({ user, onLogout, refreshTrigger }) {
           const pricePromises = data.scrips.map(async (scrip) => {
             try {
               const priceResponse = await fetch(
-                `http://localhost:8000/api/price/${scrip.symbol}?market_type=${scrip.market_type || 'crypto'}`
+                `${API_URL}/api/price/${scrip.symbol}?market_type=${scrip.market_type || 'crypto'}`
               );
               const priceData = await priceResponse.json();
               return {
@@ -142,7 +144,7 @@ function Navbar({ user, onLogout, refreshTrigger }) {
     e.stopPropagation(); // Prevent level click
     
     try {
-      const response = await fetch(`http://localhost:8000/api/scrips/${level.symbol}/alert`, {
+      const response = await fetch(`${API_URL}/api/scrips/${level.symbol}/alert`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

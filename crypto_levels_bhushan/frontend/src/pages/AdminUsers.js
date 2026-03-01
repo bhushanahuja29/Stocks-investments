@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './AdminUsers.css';
 
+const API_URL = process.env.REACT_APP_API_URL || '${API_URL}';
+
 function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [showAddUser, setShowAddUser] = useState(false);
@@ -21,7 +23,7 @@ function AdminUsers() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/api/admin/users', {
+      const response = await fetch('${API_URL}/api/admin/users', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -41,7 +43,7 @@ function AdminUsers() {
     const token = localStorage.getItem('token');
     
     try {
-      const response = await fetch('http://localhost:8000/api/admin/users', {
+      const response = await fetch('${API_URL}/api/admin/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,7 +71,7 @@ function AdminUsers() {
     const token = localStorage.getItem('token');
     
     try {
-      const response = await fetch(`http://localhost:8000/api/admin/users/${userId}/renew`, {
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}/renew`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +100,7 @@ function AdminUsers() {
     const token = localStorage.getItem('token');
     
     try {
-      const response = await fetch(`http://localhost:8000/api/admin/users/${userId}/password`, {
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}/password`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +127,7 @@ function AdminUsers() {
     const token = localStorage.getItem('token');
     
     try {
-      const response = await fetch(`http://localhost:8000/api/admin/users/${userId}`, {
+      const response = await fetch(`${API_URL}/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
