@@ -61,9 +61,17 @@ function MonitorPremium({ onNavbarRefresh }) {
     }
   }, [notificationPermission]);
 
-  const openDeltaExchange = (symbolToOpen) => {
+  const openExchange = (symbolToOpen, marketType) => {
     if (!symbolToOpen) return;
     
+    // Indian stocks -> TradingView
+    if (marketType === 'indian_stock') {
+      const url = `https://www.tradingview.com/chart/?symbol=NSE:${symbolToOpen}`;
+      window.open(url, '_blank');
+      return;
+    }
+    
+    // Crypto/Forex -> Delta Exchange
     const upperSymbol = symbolToOpen.toUpperCase();
     let baseSymbol = upperSymbol;
     if (upperSymbol.endsWith('USDT')) {
@@ -435,9 +443,9 @@ function MonitorPremium({ onNavbarRefresh }) {
                 </div>
                 <button 
                   className="btn-open-exchange"
-                  onClick={() => openDeltaExchange(selectedScrip.symbol)}
+                  onClick={() => openExchange(selectedScrip.symbol, selectedScrip.market_type)}
                 >
-                  📈 Open on Delta
+                  📈 {selectedScrip.market_type === 'indian_stock' ? 'Open on TradingView' : 'Open on Delta'}
                 </button>
               </div>
 
