@@ -1,0 +1,61 @@
+"""NSE symbol -> Moneycontrol URL slug (company-article path segment)."""
+
+from __future__ import annotations
+
+# Seeded from Moneycontrol stock pages; autosuggest fills unknown symbols.
+MC_SLUG_BY_SYMBOL: dict[str, str] = {
+    "TCS": "tataconsultancyservices",
+    "RELIANCE": "relianceindustries",
+    "INFY": "infosys",
+    "HDFCBANK": "hdfcbank",
+    "ICICIBANK": "icicibank",
+    "SBIN": "statebankofindia",
+    "BHARTIARTL": "bhartiairtel",
+    "ITC": "itc",
+    "KOTAKBANK": "kotakmahindrabank",
+    "LT": "larsentoubro",
+    "AXISBANK": "axisbank",
+    "HINDUNILVR": "hindustanunilever",
+    "MARUTI": "marutisuzuki",
+    "BAJFINANCE": "bajajfinance",
+    "HCLTECH": "hcltechnologies",
+    "WIPRO": "wipro",
+    "SUNPHARMA": "sunpharmaceuticalindustries",
+    "TITAN": "titancompany",
+    "NTPC": "ntpc",
+    "ONGC": "oilnaturalgascorporation",
+    "ADANIPORTS": "adaniportsandspecialeconomiczone",
+    "BAJAJFINSV": "bajajfinserv",
+    "BEL": "bharatelectronics",
+    "JSWSTEEL": "jswsteel",
+    "ASIANPAINT": "asianpaints",
+    "ULTRACEMCO": "ultratechcement",
+    "M&M": "mahindramahindra",
+    "POWERGRID": "powergridcorporationofindia",
+    "TATAMOTORS": "tatamotors",
+    "TATASTEEL": "tatasteel",
+    "TECHM": "techmahindra",
+    "NESTLEIND": "nestleindia",
+    "COALINDIA": "coalindia",
+    "INDUSINDBK": "indusindbank",
+    "CIPLA": "cipla",
+    "DRREDDY": "drreddyslaboratories",
+    "EICHERMOT": "eichermotors",
+    "GRASIM": "grasimindustries",
+    "HINDALCO": "hindalcoindustries",
+    "SBILIFE": "sbilifeinsurancecompany",
+    "HDFCLIFE": "hdfclifeinsurancecompany",
+    "TATACONSUM": "tataconsumerproducts",
+    "APOLLOHOSP": "apollohospitalsenterprise",
+    "BRITANNIA": "britanniaindustries",
+    "DIVISLAB": "divislaboratories",
+    "HEROMOTOCO": "heromotocorp",
+    "ADANIENT": "adanienterprises",
+    "BAJAJ-AUTO": "bajajauto",
+    "SHRIRAMFIN": "shriramfinance",
+    "TRENT": "trent",
+}
+
+
+def get_static_slug(nse_symbol: str) -> str | None:
+    return MC_SLUG_BY_SYMBOL.get(nse_symbol.upper().strip())

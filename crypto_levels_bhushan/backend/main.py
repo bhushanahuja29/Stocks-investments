@@ -2,7 +2,8 @@
 FastAPI Backend for Crypto Levels Bhushan
 Provides APIs for support zone finding and monitoring
 """
-from fastapi import FastAPI, HTTPException
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -13,13 +14,26 @@ from datetime import datetime, timezone, timedelta
 from pymongo import MongoClient
 import requests
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Add parent directory to path to import v3
 backend_dir = Path(__file__).parent
 sys.path.insert(0, str(backend_dir))
+load_dotenv(backend_dir / ".env")
 
 # Import v3 functions
 from v3 import compute_zones_for_symbol, ts_str, fnum, is_green, is_red, body_size, START_YEAR_TS, delta_get
+
+# Krypto agent market data
+from market_helpers import (
+    compute_index_movers,
+    compute_nifty_movers,
+    compute_watchlist_movers,
+    get_market_quote,
+    get_scrip_news,
+)
+from index_constituents import list_indices
+from nifty50_data import NIFTY_50_STOCKS
 
 # Twelve Data API Configuration
 TWELVE_DATA_API_KEY = os.getenv("TWELVE_DATA_API_KEY", "b455fff947db40efb714b37b4873b135")
@@ -30,7 +44,46 @@ last_api_reset = datetime.now(timezone.utc).date()
 forex_price_cache = {}  # Cache forex prices: {symbol: {"price": float, "timestamp": datetime}}
 FOREX_PRICE_CACHE_DURATION = 180  # 3 minutes in seconds
 
-app = FastAPI(title="Crypto Levels API", version="1.0.0")
+_push_scheduler = None
+
+
+@asynccontextmanager
+async def _app_lifespan(application: FastAPI):
+    global _push_scheduler
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.cron import CronTrigger
+    from push_notifications import VAPID_PRIVATE_KEY, run_morning_nifty_push
+
+    if VAPID_PRIVATE_KEY:
+        def _morning_job():
+            try:
+                coll = get_mongo_connection()
+                db = coll.database
+                result = run_morning_nifty_push(db)
+                print(f"[MORNING PUSH] {result}")
+            except Exception as exc:
+                print(f"[MORNING PUSH ERROR] {exc}")
+
+        _push_scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
+        _push_scheduler.add_job(
+            _morning_job,
+            CronTrigger(hour=8, minute=0),
+            id="morning_nifty_push",
+            replace_existing=True,
+        )
+        _push_scheduler.start()
+        print("[MORNING PUSH] Scheduler active — 8:00 AM IST daily")
+    else:
+        print("[MORNING PUSH] VAPID_PRIVATE_KEY not set — scheduler disabled")
+
+    yield
+
+    if _push_scheduler:
+        _push_scheduler.shutdown(wait=False)
+        _push_scheduler = None
+
+
+app = FastAPI(title="Crypto Levels API", version="1.0.0", lifespan=_app_lifespan)
 
 # CORS configuration
 app.add_middleware(
@@ -766,9 +819,250 @@ def health_check():
     try:
         coll = get_mongo_connection()
         coll.find_one()
-        return {"status": "healthy", "database": "connected"}
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "market_api": True,
+            "market_routes": [
+                "/api/market/nifty50",
+                "/api/market/nifty-movers",
+                "/api/market/index-movers",
+                "/api/market/indices",
+                "/api/market/watchlist-movers",
+                "/api/market/quote/{symbol}",
+                "/api/market/news/{symbol}",
+                "/api/market/morning-nifty-preview",
+                "/api/push/vapid-public-key",
+                "/api/push/subscribe",
+                "/api/push/unsubscribe",
+                "/api/push/test",
+            ],
+        }
     except Exception as e:
-        return {"status": "unhealthy", "error": str(e)}
+        return {"status": "unhealthy", "error": str(e), "market_api": False}
+
+
+@app.get("/api/market/nifty50")
+def market_nifty50():
+    """Return Nifty 50 constituent list."""
+    return {"success": True, "stocks": NIFTY_50_STOCKS, "count": len(NIFTY_50_STOCKS)}
+
+
+@app.get("/api/market/indices")
+def market_indices():
+    """List supported index scans (nifty50, banknifty, finnifty)."""
+    return {"success": True, "indices": list_indices()}
+
+
+@app.get("/api/market/index-movers")
+def market_index_movers(
+    index: str = "nifty50",
+    min_pct: float = 2.0,
+    period: str = "daily",
+    direction: str = "any",
+    sort: str = "desc",
+):
+    """Index constituents with filtered % move (Yahoo Finance NSE quotes)."""
+    if period not in ("daily", "weekly", "monthly"):
+        raise HTTPException(status_code=400, detail="period must be daily, weekly, or monthly")
+    if direction not in ("up", "down", "any"):
+        raise HTTPException(status_code=400, detail="direction must be up, down, or any")
+    if sort not in ("desc", "asc"):
+        raise HTTPException(status_code=400, detail="sort must be desc or asc")
+    try:
+        return compute_index_movers(index, min_pct, period=period, direction=direction, sort=sort)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/market/nifty-movers")
+def market_nifty_movers(min_pct: float = 2.0, period: str = "daily"):
+    """Nifty 50 alias for index-movers."""
+    if period not in ("daily", "weekly", "monthly"):
+        raise HTTPException(status_code=400, detail="period must be daily, weekly, or monthly")
+    try:
+        return compute_index_movers("nifty50", min_pct, period=period, direction="any", sort="desc")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/market/quote/{symbol}")
+def market_quote(symbol: str, market_type: Optional[str] = "crypto"):
+    """LTP, session open, previous close for pin widget."""
+    mtype = market_type or "crypto"
+    if mtype in ("indian_stock", "indian_stocks", "indian"):
+        mtype = "indian_stocks"
+    elif mtype not in ("crypto", "indian_stocks"):
+        raise HTTPException(status_code=400, detail="market_type must be crypto or indian_stocks")
+    try:
+        return get_market_quote(symbol, mtype)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/market/news/{symbol}")
+def market_news(
+    symbol: str,
+    market_type: Optional[str] = "indian_stocks",
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    limit: int = 30,
+    sources: str = "yahoo,moneycontrol",
+):
+    """Headlines for a scrip from Yahoo Finance and Moneycontrol, filtered by month."""
+    mtype = market_type or "indian_stocks"
+    if mtype in ("indian_stock", "indian_stocks", "indian"):
+        mtype = "indian_stocks"
+    elif mtype not in ("crypto", "indian_stocks"):
+        raise HTTPException(status_code=400, detail="market_type must be crypto or indian_stocks")
+    if month is not None and (month < 1 or month > 12):
+        raise HTTPException(status_code=400, detail="month must be 1-12")
+    if limit < 1 or limit > 100:
+        raise HTTPException(status_code=400, detail="limit must be 1-100")
+    try:
+        return get_scrip_news(
+            symbol,
+            market_type=mtype,
+            year=year,
+            month=month,
+            limit=limit,
+            sources=sources,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/market/morning-nifty-preview")
+def market_morning_nifty_preview():
+    """Preview title/body for 8 AM Nifty 50 mover push."""
+    try:
+        from push_notifications import morning_nifty_preview
+
+        return morning_nifty_preview()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class PushKeysModel(BaseModel):
+    p256dh: str
+    auth: str
+
+
+class PushSubscribeRequest(BaseModel):
+    endpoint: str
+    keys: PushKeysModel
+
+
+class PushUnsubscribeRequest(BaseModel):
+    endpoint: str
+
+
+@app.get("/api/push/vapid-public-key")
+def push_vapid_public_key():
+    try:
+        from push_notifications import get_vapid_public_key
+
+        return {"success": True, "publicKey": get_vapid_public_key()}
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.post("/api/push/subscribe")
+def push_subscribe(
+    request: PushSubscribeRequest,
+    authorization: Optional[str] = Header(None),
+    user_agent: Optional[str] = Header(None),
+):
+    from push_notifications import save_subscription, user_id_from_token
+
+    user_id = user_id_from_token(authorization)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Login required to enable morning alerts")
+
+    try:
+        coll = get_mongo_connection()
+        db = coll.database
+        save_subscription(
+            db,
+            {"endpoint": request.endpoint, "keys": request.keys.model_dump()},
+            user_id=user_id,
+            user_agent=user_agent,
+        )
+        return {"success": True, "message": "Subscribed to morning Nifty 50 alerts"}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/push/unsubscribe")
+def push_unsubscribe(
+    request: PushUnsubscribeRequest,
+    authorization: Optional[str] = Header(None),
+):
+    from push_notifications import remove_subscription, user_id_from_token
+
+    if not user_id_from_token(authorization):
+        raise HTTPException(status_code=401, detail="Login required")
+
+    try:
+        coll = get_mongo_connection()
+        db = coll.database
+        removed = remove_subscription(db, request.endpoint)
+        return {"success": True, "removed": removed}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/push/test")
+def push_test(authorization: Optional[str] = Header(None)):
+    from push_notifications import broadcast_push, user_id_from_token
+
+    user_id = user_id_from_token(authorization)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Login required")
+
+    try:
+        coll = get_mongo_connection()
+        db = coll.database
+        stats = broadcast_push(
+            db,
+            "Crypto Levels — test",
+            "Morning Nifty 50 alerts are enabled. You will get movers ≥2% at 8 AM IST.",
+            url="/monitor",
+            user_id=user_id,
+        )
+        if stats["sent"] == 0:
+            raise HTTPException(
+                status_code=404,
+                detail="No push subscription found. Enable morning alerts first.",
+            )
+        return {"success": True, **stats}
+    except HTTPException:
+        raise
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/market/watchlist-movers")
+def market_watchlist_movers(min_pct: float = 2.0, market_type: Optional[str] = None):
+    """Mongo watchlist symbols with |daily change| >= min_pct."""
+    try:
+        coll = get_mongo_connection()
+        movers = compute_watchlist_movers(coll, min_pct, market_type)
+        return {
+            "success": True,
+            "min_pct": min_pct,
+            "market_type": market_type or "all",
+            "movers": movers,
+            "count": len(movers),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ====== AUTHENTICATION ROUTES ======
@@ -1400,4 +1694,7 @@ def delete_scrip(symbol: str):
 
 if __name__ == "__main__":
     import uvicorn
+
+    market_paths = [getattr(r, "path", "") for r in app.routes if getattr(r, "path", "").startswith("/api/market")]
+    print(f"Market API routes: {market_paths or 'NONE — check main.py'}")
     uvicorn.run(app, host="0.0.0.0", port=8000)

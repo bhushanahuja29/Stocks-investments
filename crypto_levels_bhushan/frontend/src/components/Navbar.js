@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import MorningAlertPanel from './MorningAlertPanel';
 import './Navbar.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -103,29 +104,8 @@ function Navbar({ user, onLogout, refreshTrigger }) {
     return () => clearInterval(interval);
   }, [refreshTrigger]); // Re-fetch when refreshTrigger changes
 
-  const handleNotificationClick = async () => {
-    if (triggeredCount > 0) {
-      // Show dropdown with triggered levels
-      setShowNotificationDropdown(!showNotificationDropdown);
-    } else if ('Notification' in window) {
-      if (Notification.permission === 'default') {
-        const permission = await Notification.requestPermission();
-        setNotificationPermission(permission);
-        if (permission === 'granted') {
-          new Notification('Notifications Enabled!', {
-            body: 'You will now receive alerts when price levels are triggered.',
-            icon: '/favicon.ico'
-          });
-        }
-      } else if (Notification.permission === 'denied') {
-        alert('Notifications are blocked. Please enable them in your browser settings.');
-      } else {
-        // Show dropdown even if no triggered levels
-        setShowNotificationDropdown(!showNotificationDropdown);
-      }
-    } else {
-      alert('Your browser does not support notifications.');
-    }
+  const handleNotificationClick = () => {
+    setShowNotificationDropdown(!showNotificationDropdown);
   };
 
   const handleLevelClick = async (level) => {
@@ -265,6 +245,8 @@ function Navbar({ user, onLogout, refreshTrigger }) {
                       </button>
                     </div>
                     
+                    <MorningAlertPanel />
+
                     {triggeredLevels.length === 0 ? (
                       <div className="no-notifications">
                         <p>No triggered levels</p>

@@ -1,0 +1,132 @@
+import React, { useState, useEffect } from 'react';
+import {
+  isPushSupported,
+  requestNotificationPermission,
+  sendLocalTestNotification,
+  subscribeToPush,
+  unsubscribeFromPush,
+  sendServerTestPush,
+  isPushSubscribed,
+} from '../utils/morningPush';
+import './MorningAlertPanel.css';
+
+function MorningAlertPanel() {
+  const [permission, setPermission] = useState(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
+  const [subscribed, setSubscribed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [supported] = useState(isPushSupported());
+
+  useEffect(() => {
+    isPushSubscribed().then(setSubscribed);
+  }, []);
+
+  const handleEnable = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      const perm = await requestNotificationPermission();
+      setPermission(perm);
+      if (perm !== 'granted') {
+        setMessage('Notifications blocked. Enable them in browser settings.');
+        return;
+      }
+      sendLocalTestNotification();
+      setMessage('Local test sent. Subscribing for 8 AM pushes…');
+      await subscribeToPush();
+      setSubscribed(true);
+      setMessage('Morning alerts enabled. Daily 8 AM IST Nifty 50 movers ≥2%.');
+    } catch (err) {
+      setMessage(err.message || String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleServerTest = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      const result = await sendServerTestPush();
+      setMessage(`Server test sent (${result.sent} device(s)). Check your notification tray.`);
+    } catch (err) {
+      setMessage(err.message || String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDisable = async () => {
+    setBusy(true);
+    setMessage('');
+    try {
+      await unsubscribeFromPush();
+      setSubscribed(false);
+      setMessage('Morning push alerts disabled.');
+    } catch (err) {
+      setMessage(err.message || String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!supported) {
+    return (
+      <div className="morning-alert-panel">
+        <p className="morning-alert-muted">Web Push not supported in this browser.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="morning-alert-panel">
+      <h4 className="morning-alert-title">Morning Nifty 50 (8 AM IST)</h4>
+      <p className="morning-alert-desc">
+        Browser notification when Nifty 50 stocks moved ≥2% vs previous close. Install this site as an app for best results.
+      </p>
+      <p className="morning-alert-status">
+        Permission: <strong>{permission}</strong>
+        {subscribed ? ' · Subscribed' : ''}
+      </p>
+      <div className="morning-alert-actions">
+        {!subscribed ? (
+          <button
+            type="button"
+            className="morning-btn primary"
+            onClick={handleEnable}
+            disabled={busy || permission === 'denied'}
+          >
+            {busy ? 'Working…' : 'Enable & test notifications'}
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="morning-btn secondary"
+              onClick={handleServerTest}
+              disabled={busy}
+            >
+              Send test push
+            </button>
+            <button
+              type="button"
+              className="morning-btn danger"
+              onClick={handleDisable}
+              disabled={busy}
+            >
+              Disable
+            </button>
+          </>
+        )}
+      </div>
+      {message && <p className="morning-alert-msg">{message}</p>}
+      {permission === 'denied' && (
+        <p className="morning-alert-warn">Unblock notifications in browser site settings.</p>
+      )}
+    </div>
+  );
+}
+
+export default MorningAlertPanel;

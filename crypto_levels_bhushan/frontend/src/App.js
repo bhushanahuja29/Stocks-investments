@@ -33,6 +33,15 @@ function App() {
     setLoading(false);
   }, []);
 
+  useEffect(() => {
+    if (!user || loading) return;
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register(`${process.env.PUBLIC_URL || ''}/sw.js`)
+        .catch((err) => console.warn('[SW] register failed:', err));
+    }
+  }, [user, loading]);
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

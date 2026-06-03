@@ -1,0 +1,67 @@
+.morning-alert-panel {
+  padding: 12px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 22, 40, 0.95);
+  max-width: 320px;
+}
+
+.morning-alert-title {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #56c9ff;
+}
+
+.morning-alert-desc,
+.morning-alert-status,
+.morning-alert-muted,
+.morning-alert-msg,
+.morning-alert-warn {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #8cd9ff;
+}
+
+.morning-alert-msg {
+  color: #84ffc9;
+}
+
+.morning-alert-warn {
+  color: #ff6b8a;
+}
+
+.morning-alert-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.morning-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.morning-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.morning-btn.primary {
+  background: #0d2840;
+  color: #56c9ff;
+}
+
+.morning-btn.secondary {
+  background: #1a3a55;
+  color: #fff;
+}
+
+.morning-btn.danger {
+  background: #2a1020;
+  color: #ff6b8a;
+}
