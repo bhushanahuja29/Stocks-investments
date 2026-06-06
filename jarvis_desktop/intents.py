@@ -15,7 +15,9 @@ from .news_format import format_news_log, format_news_speech
 from .news_query_parser import parse_news_query
 from .pin_commands import format_pin_confirmation, parse_pin_command
 from .pin_panel import _MAX_PINS
+from .market_updates import format_market_updates_speech, is_market_updates_query
 from .query_parser import parse_mover_query
+from .tools.local_dashboard import get_market_dashboard_local
 from .tools.local_news import get_scrip_news_local
 from .llm import OllamaClient
 from .models import JarvisResponse
@@ -69,8 +71,23 @@ class IntentRouter:
             threshold = self._extract_threshold_pct(text) or CONFIG.near_trigger_threshold
             return self.analyze_all_symbols(threshold)
 
-        if "near trigger" in text or "morning" in text:
+        if "near trigger" in text or ("morning" in text and "market update" not in text):
             return self.analyze_all_symbols(CONFIG.near_trigger_threshold)
+
+        if is_market_updates_query(spoken_text):
+            try:
+                payload = self.backend.get_market_dashboard()
+            except requests.RequestException:
+                try:
+                    payload = get_market_dashboard_local()
+                except Exception as exc:
+                    return JarvisResponse(f"Could not fetch market updates: {exc}")
+            spoken = format_market_updates_speech(payload)
+            try:
+                detail = json.dumps(payload, indent=2, default=str)[:6000]
+            except TypeError:
+                detail = str(payload)[:6000]
+            return JarvisResponse(spoken, log_detail=f"---\nMarket dashboard:\n{detail}")
 
         pin_cmd = parse_pin_command(spoken_text)
         if pin_cmd and self.pin_panel:

@@ -1,7 +1,7 @@
 {
   "short_name": "Crypto Levels",
   "name": "Crypto Levels Monitor - Bhushan",
-  "description": "Support zones, live monitor, and 8 AM Nifty 50 mover alerts",
+  "description": "Support zones, pinned stock price alerts, and 8 AM Nifty 50 mover alerts",
   "icons": [
     {
       "src": "favicon.ico",

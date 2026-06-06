@@ -32,6 +32,9 @@ class JarvisConfig:
     ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
     ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
     agent_max_steps: int = int(os.getenv("AGENT_MAX_STEPS", "5"))
+    jarvis_sync_key: str = os.getenv(
+        "JARVIS_SYNC_KEY", "delta-bhushan-jarvis-sync-2026"
+    )
 
 
 CONFIG = JarvisConfig()

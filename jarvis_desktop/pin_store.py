@@ -6,15 +6,28 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-from .quote_service import normalize_market_type
+from .pin_market_hours import normalize_pin_market_type as normalize_market_type
+
 
 @dataclass
 class PinnedEntry:
     symbol: str
     market_type: str
+    alert_above: float | None = None
+    alert_below: float | None = None
 
     def key(self) -> str:
         return self.symbol.upper().strip()
+
+
+def _parse_alert(value: object) -> float | None:
+    if value is None or value == "":
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
 
 
 def pin_store_path() -> Path:
@@ -43,7 +56,14 @@ def load_pins(path: Path | None = None) -> list[PinnedEntry]:
             continue
         mtype = normalize_market_type(str(item.get("market_type", "indian_stocks")))
         seen.add(sym)
-        out.append(PinnedEntry(symbol=sym, market_type=mtype))
+        out.append(
+            PinnedEntry(
+                symbol=sym,
+                market_type=mtype,
+                alert_above=_parse_alert(item.get("alert_above")),
+                alert_below=_parse_alert(item.get("alert_below")),
+            )
+        )
     return out
 
 

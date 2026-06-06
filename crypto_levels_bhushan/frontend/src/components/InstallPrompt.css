@@ -1,0 +1,42 @@
+.install-prompt {
+  margin-bottom: 1rem;
+}
+
+.install-prompt-inner {
+  background: linear-gradient(135deg, #0d2840 0%, #143550 100%);
+  border: 1px solid #1a4a6a;
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: #e8f4ff;
+}
+
+.install-prompt-inner p {
+  margin: 6px 0 12px;
+  font-size: 0.9rem;
+  color: #8cd9ff;
+}
+
+.install-prompt-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.install-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.install-btn.primary {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.install-btn.ghost {
+  background: transparent;
+  color: #8cd9ff;
+  border: 1px solid #2a5a7a;
+}

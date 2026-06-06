@@ -7,10 +7,11 @@ import {
   unsubscribeFromPush,
   sendServerTestPush,
   isPushSubscribed,
-} from '../utils/morningPush';
-import './MorningAlertPanel.css';
+} from '../utils/pushNotifications';
+import { pushPlatformHint } from '../utils/pushPlatform';
+import './PriceAlertPanel.css';
 
-function MorningAlertPanel() {
+function PriceAlertPanel() {
   const [permission, setPermission] = useState(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
@@ -34,10 +35,10 @@ function MorningAlertPanel() {
         return;
       }
       sendLocalTestNotification();
-      setMessage('Local test sent. Subscribing for 8 AM pushes…');
+      setMessage('Local test sent. Subscribing for pin price alerts…');
       await subscribeToPush();
       setSubscribed(true);
-      setMessage('Morning alerts enabled. Daily 8 AM IST Nifty 50 movers ≥2%. Pin alerts use the same subscription.');
+      setMessage('Price alerts enabled — you will be notified when pinned stocks cross alert levels.');
     } catch (err) {
       setMessage(err.message || String(err));
     } finally {
@@ -64,7 +65,7 @@ function MorningAlertPanel() {
     try {
       await unsubscribeFromPush();
       setSubscribed(false);
-      setMessage('Morning push alerts disabled.');
+      setMessage('Push alerts disabled.');
     } catch (err) {
       setMessage(err.message || String(err));
     } finally {
@@ -74,37 +75,35 @@ function MorningAlertPanel() {
 
   if (!supported) {
     return (
-      <div className="morning-alert-panel">
-        <p className="morning-alert-muted">Web Push not supported in this browser.</p>
+      <div className="price-alert-panel">
+        <p className="price-alert-muted">Web Push not supported in this browser.</p>
       </div>
     );
   }
 
   return (
-    <div className="morning-alert-panel">
-      <h4 className="morning-alert-title">Morning Nifty 50 (8 AM IST)</h4>
-      <p className="morning-alert-desc">
-        Browser notification when Nifty 50 stocks moved ≥2% vs previous close. Install this site as an app for best results.
-      </p>
-      <p className="morning-alert-status">
+    <div className="price-alert-panel">
+      <h4 className="price-alert-title">Pin price alerts (phone)</h4>
+      <p className="price-alert-desc">{pushPlatformHint()}</p>
+      <p className="price-alert-status">
         Permission: <strong>{permission}</strong>
         {subscribed ? ' · Subscribed' : ''}
       </p>
-      <div className="morning-alert-actions">
+      <div className="price-alert-actions">
         {!subscribed ? (
           <button
             type="button"
-            className="morning-btn primary"
+            className="price-btn primary"
             onClick={handleEnable}
             disabled={busy || permission === 'denied'}
           >
-            {busy ? 'Working…' : 'Enable & test notifications'}
+            {busy ? 'Working…' : 'Enable price alert notifications'}
           </button>
         ) : (
           <>
             <button
               type="button"
-              className="morning-btn secondary"
+              className="price-btn secondary"
               onClick={handleServerTest}
               disabled={busy}
             >
@@ -112,7 +111,7 @@ function MorningAlertPanel() {
             </button>
             <button
               type="button"
-              className="morning-btn danger"
+              className="price-btn danger"
               onClick={handleDisable}
               disabled={busy}
             >
@@ -121,12 +120,12 @@ function MorningAlertPanel() {
           </>
         )}
       </div>
-      {message && <p className="morning-alert-msg">{message}</p>}
+      {message && <p className="price-alert-msg">{message}</p>}
       {permission === 'denied' && (
-        <p className="morning-alert-warn">Unblock notifications in browser site settings.</p>
+        <p className="price-alert-warn">Unblock notifications in browser site settings.</p>
       )}
     </div>
   );
 }
 
-export default MorningAlertPanel;
+export default PriceAlertPanel;

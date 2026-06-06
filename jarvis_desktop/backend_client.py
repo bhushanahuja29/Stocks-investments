@@ -137,6 +137,39 @@ class BackendClient:
         response.raise_for_status()
         return response.json()
 
+    def get_market_dashboard(self) -> dict[str, Any]:
+        response = requests.get(
+            self._url("/api/market/dashboard"),
+            timeout=self.timeout_seconds * 2,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def sync_pins(self, entries: list[dict[str, Any]]) -> dict[str, Any]:
+        """Push global pin list to Crypto Levels MongoDB for mobile alerts."""
+        headers: dict[str, str] = {"Content-Type": "application/json"}
+        if CONFIG.jarvis_sync_key:
+            headers["X-Jarvis-Key"] = CONFIG.jarvis_sync_key
+        payload = {
+            "pins": [
+                {
+                    "symbol": e.get("symbol"),
+                    "market_type": e.get("market_type", "crypto"),
+                    "alert_above": e.get("alert_above"),
+                    "alert_below": e.get("alert_below"),
+                }
+                for e in entries
+            ]
+        }
+        response = requests.post(
+            self._url("/api/pins/sync"),
+            json=payload,
+            headers=headers,
+            timeout=self.timeout_seconds,
+        )
+        response.raise_for_status()
+        return response.json()
+
     def get_watchlist_movers(self, min_pct: float, market_type: str | None = None) -> dict[str, Any]:
         params: dict[str, Any] = {"min_pct": min_pct}
         if market_type:

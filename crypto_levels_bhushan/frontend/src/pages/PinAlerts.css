@@ -1,0 +1,128 @@
+.pin-alerts-page {
+  min-height: calc(100vh - 80px);
+  background: #02030a;
+  color: #e8f4ff;
+  padding: 24px 16px 48px;
+}
+
+.pin-alerts-container {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.pin-alerts-header h1 {
+  margin: 0 0 8px;
+  color: #56c9ff;
+}
+
+.pin-alerts-header p {
+  margin: 0 0 20px;
+  color: #8cd9ff;
+  line-height: 1.5;
+}
+
+.pin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.pin-card {
+  background: #0a1628;
+  border: 1px solid #1a3a55;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.pin-card.paused {
+  opacity: 0.85;
+  border-color: #2a3a4a;
+}
+
+.pin-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.pin-card-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.pin-market-type {
+  font-size: 0.75rem;
+  color: #6a8aaa;
+  text-transform: uppercase;
+}
+
+.pin-price {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.pin-change.up {
+  color: #84ffc9;
+}
+
+.pin-change.down {
+  color: #ff6b8a;
+}
+
+.pin-session {
+  font-size: 0.75rem;
+  color: #ffb347;
+  margin: 6px 0;
+}
+
+.pin-alerts-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.pin-alerts-row label {
+  flex: 1;
+  font-size: 0.75rem;
+  color: #8cd9ff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pin-alerts-row input {
+  background: #0d2840;
+  border: 1px solid #1a4a6a;
+  border-radius: 6px;
+  color: #fff;
+  padding: 6px 8px;
+}
+
+.pin-save-btn {
+  margin-top: 10px;
+  width: 100%;
+  background: #143550;
+  color: #56c9ff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pin-loading,
+.pin-empty,
+.pin-error {
+  margin-top: 16px;
+}
+
+.pin-error {
+  color: #ff6b8a;
+}
+
+.pin-empty {
+  color: #8cd9ff;
+}

@@ -104,14 +104,22 @@ def send_push(
     title: str,
     body: str,
     url: str = "/monitor",
+    *,
+    tag: str | None = None,
+    event: str | None = None,
 ) -> None:
     if not VAPID_PRIVATE_KEY:
         raise RuntimeError("VAPID_PRIVATE_KEY not configured")
 
-    payload = json.dumps({"title": title, "body": body, "url": url})
+    payload: dict[str, Any] = {"title": title, "body": body, "url": url}
+    if tag:
+        payload["tag"] = tag
+    if event:
+        payload["event"] = event
+
     webpush(
         subscription_info=_subscription_info(subscription_doc),
-        data=payload,
+        data=json.dumps(payload),
         vapid_private_key=VAPID_PRIVATE_KEY,
         vapid_claims=_vapid_claims(),
     )
@@ -124,6 +132,8 @@ def broadcast_push(
     url: str = "/monitor",
     *,
     user_id: str | None = None,
+    tag: str | None = None,
+    event: str | None = None,
 ) -> dict[str, int]:
     coll = _push_coll(db)
     query: dict[str, Any] = {}
@@ -136,7 +146,7 @@ def broadcast_push(
 
     for doc in coll.find(query):
         try:
-            send_push(doc, title, body, url)
+            send_push(doc, title, body, url, tag=tag, event=event)
             sent += 1
         except WebPushException as exc:
             failed += 1
@@ -149,6 +159,47 @@ def broadcast_push(
             failed += 1
 
     return {"sent": sent, "failed": failed, "removed": removed}
+
+
+def build_pin_alert_message(
+    symbol: str,
+    direction: str,
+    ltp: float,
+    alert_price: float,
+    market_type: str = "crypto",
+) -> tuple[str, str]:
+    arrow = "above" if direction == "above" else "below"
+    if market_type == "indian_stocks":
+        price_s = f"₹{ltp:,.2f}"
+        alert_s = f"₹{alert_price:,.2f}"
+    else:
+        price_s = f"{ltp:,.2f}"
+        alert_s = f"{alert_price:,.2f}"
+    title = f"{symbol} — price alert"
+    body = f"{symbol} crossed {arrow} {alert_s} (now {price_s})"
+    return title, body
+
+
+def broadcast_pin_alert_push(
+    db,
+    *,
+    symbol: str,
+    direction: str,
+    ltp: float,
+    alert_price: float,
+    market_type: str = "crypto",
+) -> dict[str, int]:
+    """Broadcast pin price alert to all push subscriptions."""
+    title, body = build_pin_alert_message(symbol, direction, ltp, alert_price, market_type)
+    tag = f"pin-alert-{symbol}-{direction}"
+    return broadcast_push(
+        db,
+        title,
+        body,
+        url="/pins",
+        tag=tag,
+        event="pin_alert",
+    )
 
 
 def build_morning_nifty_message() -> tuple[str, str, dict[str, Any]]:

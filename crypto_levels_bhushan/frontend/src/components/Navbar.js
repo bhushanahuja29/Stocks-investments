@@ -202,6 +202,13 @@ function Navbar({ user, onLogout, refreshTrigger }) {
             >
               🔍 Zone Finder
             </Link>
+            <Link 
+              to="/pins" 
+              className={isActive('/pins') ? 'active' : ''}
+              onClick={() => setMenuOpen(false)}
+            >
+              📌 Pins
+            </Link>
             {user.role === 'admin' && (
               <Link 
                 to="/admin/users" 

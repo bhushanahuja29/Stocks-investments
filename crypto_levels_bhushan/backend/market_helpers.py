@@ -293,6 +293,32 @@ def get_market_quote(symbol: str, market_type: str = "crypto") -> dict[str, Any]
             return snap
         raise ValueError(f"No quote data for {symbol}")
 
+    if market_type in ("forex", "commodity"):
+        sym = symbol.upper().strip()
+        yahoo_sym = "GC=F" if sym in ("XAUUSD", "XAU", "GOLD", "XAU/USD") else sym
+        try:
+            import yfinance as yf
+
+            ticker = yf.Ticker(yahoo_sym)
+            hist = ticker.history(period="5d")
+            if hist is None or hist.empty:
+                raise ValueError(f"No forex quote for {symbol}")
+            last = float(hist["Close"].iloc[-1])
+            prev = float(hist["Close"].iloc[-2]) if len(hist) > 1 else last
+            pct = ((last - prev) / prev * 100) if prev else 0.0
+            return {
+                "symbol": sym,
+                "market_type": "forex",
+                "ltp": round(last, 2),
+                "open": round(float(hist["Open"].iloc[-1]), 2),
+                "previous_close": round(prev, 2),
+                "change_pct": round(pct, 2),
+                "change_inr": None,
+                "source": "yahoo_finance",
+            }
+        except Exception as exc:
+            raise ValueError(f"No quote data for {symbol}: {exc}") from exc
+
     snap = get_crypto_quote_snapshot(symbol)
     if snap:
         return snap

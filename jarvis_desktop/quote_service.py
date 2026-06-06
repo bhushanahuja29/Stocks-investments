@@ -9,8 +9,11 @@ from .tools import local_market
 
 
 def normalize_market_type(market_type: str) -> str:
-    if market_type in ("indian_stock", "indian_stocks"):
+    m = (market_type or "").strip().lower()
+    if m in ("indian_stock", "indian_stocks"):
         return "indian_stocks"
+    if m in ("forex", "commodity"):
+        return "forex"
     return "crypto"
 
 

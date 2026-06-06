@@ -1,7 +1,18 @@
 /* Crypto Levels — Web Push service worker */
 
+const ROUTE_BY_EVENT = {
+  morning_nifty: '/monitor',
+  pin_alert: '/pins',
+};
+
 self.addEventListener('push', (event) => {
-  let data = { title: 'Crypto Levels', body: 'Morning Nifty update', url: '/monitor' };
+  let data = {
+    title: 'Crypto Levels',
+    body: 'Price alert',
+    url: '/pins',
+    tag: 'crypto-levels',
+    event: 'pin_alert',
+  };
   try {
     if (event.data) {
       data = { ...data, ...event.data.json() };
@@ -12,12 +23,16 @@ self.addEventListener('push', (event) => {
     }
   }
 
+  const eventType = data.event || 'pin_alert';
+  const url = data.url || ROUTE_BY_EVENT[eventType] || '/pins';
+  const tag = data.tag || (eventType === 'pin_alert' ? 'pin-alert' : 'morning-nifty');
+
   const options = {
     body: data.body,
     icon: '/favicon.ico',
     badge: '/favicon.ico',
-    data: { url: data.url || '/monitor' },
-    tag: 'morning-nifty',
+    data: { url, event: eventType },
+    tag,
     renotify: true,
   };
 
@@ -26,7 +41,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = event.notification.data?.url || '/monitor';
+  const target = event.notification.data?.url || '/pins';
   const url = new URL(target, self.location.origin).href;
 
   event.waitUntil(

@@ -27,6 +27,7 @@ With Ollama running (`llama3.1:8b` recommended) and the backend on port 8000:
 | `analyze all symbols within 2 percent` | Fast path — near-trigger scan |
 | `pin hdfcbank` / `pin btc` | **Pinned overlay** — always-on-top tab on the right edge of the screen |
 | `unpin` | Remove the pinned stock widget |
+| `market updates` / `market update me` | **Nifty 50, Bank Nifty, US 100, gold, BTC** — price vs prev close and % today |
 | `get news of tcs june 2026` | Headlines from **Moneycontrol + Yahoo** for that month |
 | `news for reliance may 2026` | Same — month/year parsed automatically |
 
@@ -39,14 +40,17 @@ With Ollama running (`llama3.1:8b` recommended) and the backend on port 8000:
 
 ### Pin overlay
 
-Say or type **pin** plus a symbol (e.g. `pin reliance`, `stick btc on screen`). Each pin gets its own tab on the **right edge**, stacked vertically (up to 12). **Hover** a tab to expand: live price, today's open, previous close, % change, **TradingView**, and **Unpin** for that symbol.
+Say or type **pin** plus a symbol (e.g. `pin reliance`, `stick btc on screen`). Each pin gets its own tab on the **right edge**, stacked vertically (up to 12). **Hover** a tab to expand: live price, today's open, previous close, % change, **price alerts**, **TradingView**, and **Unpin** for that symbol.
 
 - **Multiple pins:** `pin tcs` then `pin hdfcbank` — both stay visible.
 - **Unpin one:** `unpin tcs`
 - **Unpin all:** `unpin all` or plain `unpin` when several are pinned
-- **Persistence:** pins are saved to `jarvis_desktop/data/pinned_scrips.json` and restored when Krypto starts.
-
-Quotes refresh every 30 seconds while Krypto is running.
+- **Price alerts:** in the expanded panel, set **Above** and/or **Below** prices and click **Save alerts** (or press Enter). Krypto plays a sound when price **crosses** that level. Alerts are saved with the pin.
+- **Live updates:** pinned prices refresh every **5 seconds** when their market is open; the tab shows a compact live price.
+  - **Indian stocks:** weekdays **9:00 AM – 3:30 PM IST** only
+  - **Crypto (BTC, ETH, …):** **24/7**
+  - **Gold (XAUUSD):** **all day on weekdays** (paused weekends)
+- **Persistence:** pins and alert levels are saved to `jarvis_desktop/data/pinned_scrips.json` and restored when Krypto starts.
 
 Indices: **Nifty 50**, **Bank Nifty** (~12 banks), **Fin Nifty** (banks + NBFCs). Filters: `min_pct`, `direction` (up/down/any), `sort` (asc/desc), `period` (daily/weekly/monthly).
 

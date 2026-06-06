@@ -8,6 +8,8 @@ from typing import Any
 
 import tkinter as tk
 
+from .pin_alert_sound import play_price_alert
+from .pin_market_hours import pin_session_status, should_poll_pin
 from .pin_store import PinnedEntry, load_pins, save_pins
 from .quote_service import fetch_market_quote, normalize_market_type
 from .tradingview_urls import tradingview_chart_url
@@ -20,9 +22,10 @@ _DOWN = "#FF6B8A"
 _COLLAPSED_W = 28
 _EXPANDED_W = 300
 _COLLAPSED_H = 120
-_EXPANDED_H = 240
+_EXPANDED_H = 320
 _SLOT_GAP = 6
-_REFRESH_MS = 30_000
+_REFRESH_MS = 5_000
+_IDLE_POLL_MS = 60_000
 _COLLAPSE_DELAY_MS = 400
 _MAX_PINS = 12
 
@@ -32,6 +35,8 @@ class _PinState:
     symbol: str
     market_type: str
     display_name: str
+    alert_above: float | None = None
+    alert_below: float | None = None
 
 
 class _SinglePinWidget:
@@ -44,18 +49,24 @@ class _SinglePinWidget:
         fetch_quote: Callable[[str, str], dict[str, Any]],
         on_unpin: Callable[[str], None],
         on_layout: Callable[[], None],
+        on_alerts_changed: Callable[[str], None],
     ) -> None:
         self._parent = parent
         self._state = state
         self._fetch_quote = fetch_quote
         self._on_unpin = on_unpin
         self._on_layout = on_layout
+        self._on_alerts_changed = on_alerts_changed
         self._win: tk.Toplevel | None = None
         self._expanded = False
         self._refresh_after: str | None = None
         self._collapse_after: str | None = None
         self._last_quote: dict[str, Any] | None = None
         self._y_offset = 0
+        self._prev_ltp: float | None = None
+        self._above_armed = True
+        self._below_armed = True
+        self._had_first_quote = False
 
         self._tab_label: tk.Label | None = None
         self._detail_frame: tk.Frame | None = None
@@ -64,12 +75,19 @@ class _SinglePinWidget:
         self._prev_label: tk.Label | None = None
         self._change_label: tk.Label | None = None
         self._title_label: tk.Label | None = None
+        self._alert_status_label: tk.Label | None = None
+        self._session_status_label: tk.Label | None = None
+        self._alert_above_var: tk.StringVar | None = None
+        self._alert_below_var: tk.StringVar | None = None
 
         self._build()
 
     @property
     def symbol(self) -> str:
         return self._state.symbol
+
+    def get_alerts(self) -> tuple[float | None, float | None]:
+        return self._state.alert_above, self._state.alert_below
 
     def destroy(self) -> None:
         self._cancel_timers()
@@ -178,11 +196,99 @@ class _SinglePinWidget:
             anchor="w",
         )
 
-        btn_row = tk.Frame(self._detail_frame, bg=_BG)
-        btn_row.pack(fill="x")
+        alert_frame = tk.Frame(self._detail_frame, bg=_BG)
+        alert_frame.pack(fill="x", pady=(6, 4))
+
+        tk.Label(
+            alert_frame,
+            text="Price alerts",
+            bg=_BG,
+            fg=_MUTED,
+            font=("Segoe UI", 9, "bold"),
+            anchor="w",
+        ).pack(fill="x")
+
+        row = tk.Frame(alert_frame, bg=_BG)
+        row.pack(fill="x", pady=(4, 2))
+
+        self._alert_above_var = tk.StringVar(
+            value=self._fmt_alert_input(self._state.alert_above)
+        )
+        self._alert_below_var = tk.StringVar(
+            value=self._fmt_alert_input(self._state.alert_below)
+        )
+
+        tk.Label(row, text="Above", bg=_BG, fg=_MUTED, font=("Segoe UI", 9)).pack(side="left")
+        above_entry = tk.Entry(
+            row,
+            textvariable=self._alert_above_var,
+            width=10,
+            bg="#0d2840",
+            fg="#FFFFFF",
+            insertbackground=_ACCENT,
+            relief="flat",
+            font=("Segoe UI", 9),
+        )
+        above_entry.pack(side="left", padx=(4, 10))
+        above_entry.bind("<Return>", lambda _e: self._save_alerts())
+        above_entry.bind("<FocusOut>", lambda _e: self._save_alerts())
+
+        tk.Label(row, text="Below", bg=_BG, fg=_MUTED, font=("Segoe UI", 9)).pack(side="left")
+        below_entry = tk.Entry(
+            row,
+            textvariable=self._alert_below_var,
+            width=10,
+            bg="#0d2840",
+            fg="#FFFFFF",
+            insertbackground=_ACCENT,
+            relief="flat",
+            font=("Segoe UI", 9),
+        )
+        below_entry.pack(side="left", padx=(4, 0))
+        below_entry.bind("<Return>", lambda _e: self._save_alerts())
+        below_entry.bind("<FocusOut>", lambda _e: self._save_alerts())
 
         tk.Button(
-            btn_row,
+            alert_frame,
+            text="Save alerts",
+            command=self._save_alerts,
+            bg="#0d2840",
+            fg=_ACCENT,
+            activebackground="#143550",
+            activeforeground=_ACCENT,
+            relief="flat",
+            font=("Segoe UI", 8, "bold"),
+            padx=6,
+            pady=2,
+            cursor="hand2",
+        ).pack(anchor="w", pady=(2, 0))
+
+        self._alert_status_label = tk.Label(
+            alert_frame,
+            text=self._alert_status_text(),
+            bg=_BG,
+            fg="#FFB347",
+            font=("Segoe UI", 8),
+            anchor="w",
+        )
+        self._alert_status_label.pack(fill="x", pady=(2, 0))
+
+        self._session_status_label = tk.Label(
+            self._detail_frame,
+            text="",
+            bg=_BG,
+            fg="#6a8aaa",
+            font=("Segoe UI", 8),
+            anchor="w",
+            wraplength=260,
+            justify="left",
+        )
+
+        self._btn_row = tk.Frame(self._detail_frame, bg=_BG)
+        self._btn_row.pack(fill="x", pady=(6, 0))
+
+        tk.Button(
+            self._btn_row,
             text="TradingView",
             command=self._open_tradingview,
             bg="#0d2840",
@@ -197,7 +303,7 @@ class _SinglePinWidget:
         ).pack(side="left", padx=(0, 6))
 
         tk.Button(
-            btn_row,
+            self._btn_row,
             text="Unpin",
             command=lambda: self._on_unpin(sym),
             bg="#2a1020",
@@ -212,11 +318,67 @@ class _SinglePinWidget:
         ).pack(side="left")
 
         self._set_collapsed()
+        self._schedule_refresh(0)
 
-    def _update_tab_text(self) -> None:
-        if self._tab_label:
-            name = self._state.display_name[:8]
-            self._tab_label.config(text="\n".join(name))
+    @staticmethod
+    def _fmt_alert_input(value: float | None) -> str:
+        if value is None:
+            return ""
+        if value == int(value):
+            return str(int(value))
+        return f"{value:g}"
+
+    def _parse_alert_field(self, raw: str) -> float | None:
+        text = raw.strip().replace(",", "")
+        if not text:
+            return None
+        try:
+            value = float(text)
+        except ValueError:
+            return None
+        return value if value > 0 else None
+
+    def _save_alerts(self) -> None:
+        if self._alert_above_var is None or self._alert_below_var is None:
+            return
+        above = self._parse_alert_field(self._alert_above_var.get())
+        below = self._parse_alert_field(self._alert_below_var.get())
+        changed = above != self._state.alert_above or below != self._state.alert_below
+        self._state.alert_above = above
+        self._state.alert_below = below
+        self._above_armed = True
+        self._below_armed = True
+        if self._alert_status_label:
+            self._alert_status_label.config(text=self._alert_status_text())
+        if changed:
+            self._on_alerts_changed(self._state.symbol)
+
+    def _alert_status_text(self) -> str:
+        parts: list[str] = []
+        if self._state.alert_above is not None:
+            parts.append(f"ring above {self._state.alert_above:,.2f}")
+        if self._state.alert_below is not None:
+            parts.append(f"ring below {self._state.alert_below:,.2f}")
+        if not parts:
+            return "Set a price above/below to get a sound alert."
+        return "Will " + " and ".join(parts) + "."
+
+    def _update_tab_text(self, ltp: float | None = None) -> None:
+        if not self._tab_label:
+            return
+        name = self._state.display_name[:6]
+        lines = list(name)
+        if ltp is not None:
+            if ltp >= 1000:
+                price_line = f"{ltp:,.0f}"
+            elif ltp >= 100:
+                price_line = f"{ltp:.1f}"
+            else:
+                price_line = f"{ltp:.2f}"
+            if len(price_line) > 6:
+                price_line = price_line[:6]
+            lines.append(price_line)
+        self._tab_label.config(text="\n".join(lines))
 
     def _on_enter(self, _event: tk.Event | None = None) -> None:
         if self._collapse_after and self._win:
@@ -256,6 +418,8 @@ class _SinglePinWidget:
         self._apply_geometry(collapsed=False)
         if self._last_quote:
             self._render_quote(self._last_quote)
+        else:
+            self._update_session_status()
 
     def _apply_geometry(self, *, collapsed: bool | None = None) -> None:
         if self._win is None:
@@ -286,13 +450,31 @@ class _SinglePinWidget:
 
         def tick() -> None:
             self._refresh_after = None
-            self._refresh_async()
+            active = should_poll_pin(self._state.symbol, self._state.market_type)
+            if active:
+                self._refresh_async()
+            else:
+                self._update_session_status()
+            next_ms = _REFRESH_MS if active else _IDLE_POLL_MS
             if self._win is not None:
-                self._refresh_after = self._win.after(_REFRESH_MS, tick)
+                self._refresh_after = self._win.after(next_ms, tick)
 
         self._refresh_after = self._win.after(delay_ms, tick)
 
+    def _update_session_status(self) -> None:
+        if not self._expanded or not self._session_status_label:
+            return
+        msg = pin_session_status(self._state.symbol, self._state.market_type)
+        if msg:
+            self._session_status_label.config(text=msg)
+            self._session_status_label.pack(fill="x", pady=(4, 0), before=self._btn_row)
+        else:
+            self._session_status_label.pack_forget()
+
     def _refresh_async(self) -> None:
+        if not should_poll_pin(self._state.symbol, self._state.market_type):
+            self._update_session_status()
+            return
         sym = self._state.symbol
         mtype = self._state.market_type
 
@@ -306,10 +488,55 @@ class _SinglePinWidget:
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _check_price_alerts(self, ltp: float | None) -> None:
+        if ltp is None or not isinstance(ltp, (int, float)):
+            return
+        if not should_poll_pin(self._state.symbol, self._state.market_type):
+            return
+
+        above = self._state.alert_above
+        below = self._state.alert_below
+        prev = self._prev_ltp
+
+        if not self._had_first_quote:
+            self._had_first_quote = True
+            self._prev_ltp = float(ltp)
+            if above is not None and float(ltp) < above:
+                self._above_armed = True
+            if below is not None and float(ltp) > below:
+                self._below_armed = True
+            return
+
+        current = float(ltp)
+        fired = False
+
+        if above is not None and self._above_armed and prev is not None:
+            if prev < above <= current:
+                fired = True
+                self._above_armed = False
+        if current < (above or float("inf")):
+            self._above_armed = True
+
+        if below is not None and self._below_armed and prev is not None:
+            if prev > below >= current:
+                fired = True
+                self._below_armed = False
+        if current > (below or 0):
+            self._below_armed = True
+
+        self._prev_ltp = current
+        if fired:
+            play_price_alert()
+
     def _apply_quote(self, quote: dict[str, Any]) -> None:
         self._last_quote = quote
+        ltp = quote.get("ltp")
+        if isinstance(ltp, (int, float)):
+            self._check_price_alerts(float(ltp))
         if self._expanded:
             self._render_quote(quote)
+        else:
+            self._update_tab_text(float(ltp) if isinstance(ltp, (int, float)) else None)
 
     def _render_quote(self, quote: dict[str, Any]) -> None:
         if not self._win:
@@ -353,7 +580,11 @@ class _SinglePinWidget:
                 text=f"{sign}{pct:.2f}%{extra}",
                 fg=_UP if pct >= 0 else _DOWN,
             )
-            self._change_label.pack(fill="x", pady=(4, 8))
+            self._change_label.pack(fill="x", pady=(4, 4))
+
+        if self._alert_status_label:
+            self._alert_status_label.config(text=self._alert_status_text())
+        self._update_session_status()
 
     def _open_tradingview(self) -> None:
         url = tradingview_chart_url(self._state.symbol, self._state.market_type)
@@ -367,9 +598,11 @@ class PinSidePanel:
         self,
         parent: tk.Misc,
         fetch_quote: Callable[[str, str], dict[str, Any]],
+        sync_pins: Callable[[list[dict[str, Any]]], None] | None = None,
     ) -> None:
         self._parent = parent
         self._fetch_quote = fetch_quote
+        self._sync_pins = sync_pins
         self._widgets: dict[str, _SinglePinWidget] = {}
         self._order: list[str] = []
 
@@ -388,6 +621,8 @@ class PinSidePanel:
         display_name: str | None = None,
         *,
         wait_for_quote: bool = True,
+        alert_above: float | None = None,
+        alert_below: float | None = None,
     ) -> dict[str, Any] | None:
         sym = symbol.upper().strip()
         mtype = normalize_market_type(market_type)
@@ -404,13 +639,20 @@ class PinSidePanel:
         if len(self._order) >= _MAX_PINS:
             return None
 
-        state = _PinState(symbol=sym, market_type=mtype, display_name=display_name or sym)
+        state = _PinState(
+            symbol=sym,
+            market_type=mtype,
+            display_name=display_name or sym,
+            alert_above=alert_above,
+            alert_below=alert_below,
+        )
         widget = _SinglePinWidget(
             self._parent,
             state,
             self._fetch_quote,
             on_unpin=self.unpin,
             on_layout=self._layout_all,
+            on_alerts_changed=lambda _s: self._persist(),
         )
         self._widgets[sym] = widget
         self._order.append(sym)
@@ -448,7 +690,13 @@ class PinSidePanel:
                 break
             if entry.key() in self._widgets:
                 continue
-            self.pin(entry.symbol, entry.market_type, wait_for_quote=False)
+            self.pin(
+                entry.symbol,
+                entry.market_type,
+                wait_for_quote=False,
+                alert_above=entry.alert_above,
+                alert_below=entry.alert_below,
+            )
             restored += 1
         return restored
 
@@ -462,11 +710,34 @@ class PinSidePanel:
 
     def _persist(self) -> None:
         entries = [
-            PinnedEntry(symbol=sym, market_type=self._widgets[sym]._state.market_type)
+            PinnedEntry(
+                symbol=sym,
+                market_type=self._widgets[sym]._state.market_type,
+                alert_above=self._widgets[sym]._state.alert_above,
+                alert_below=self._widgets[sym]._state.alert_below,
+            )
             for sym in self._order
             if sym in self._widgets
         ]
         save_pins(entries)
+        if self._sync_pins:
+            payload = [
+                {
+                    "symbol": e.symbol,
+                    "market_type": e.market_type,
+                    "alert_above": e.alert_above,
+                    "alert_below": e.alert_below,
+                }
+                for e in entries
+            ]
+
+            def _worker() -> None:
+                try:
+                    self._sync_pins(payload)
+                except Exception:
+                    pass
+
+            threading.Thread(target=_worker, daemon=True).start()
 
     def _layout_all(self) -> None:
         n = len(self._order)
@@ -494,4 +765,7 @@ def create_pin_panel(parent: tk.Misc, backend: Any) -> PinSidePanel:
     def fetch(symbol: str, market_type: str) -> dict[str, Any]:
         return fetch_market_quote(client, symbol, market_type)
 
-    return PinSidePanel(parent, fetch_quote=fetch)
+    def sync(entries: list[dict[str, Any]]) -> None:
+        client.sync_pins(entries)
+
+    return PinSidePanel(parent, fetch_quote=fetch, sync_pins=sync)

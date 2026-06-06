@@ -5,6 +5,7 @@ import Monitor from './pages/Monitor';
 import MonitorPremium from './pages/Monitor_Premium';
 import Login from './pages/Login';
 import AdminUsers from './pages/AdminUsers';
+import PinAlerts from './pages/PinAlerts';
 import Navbar from './components/Navbar';
 import './App.css';
 import './App_Premium.css';
@@ -96,6 +97,7 @@ function App() {
           <Route path="/zone-finder" element={<ZoneFinder />} />
           <Route path="/monitor" element={<MonitorPremium onNavbarRefresh={triggerNavbarRefresh} />} />
           <Route path="/monitor-classic" element={<Monitor onNavbarRefresh={triggerNavbarRefresh} />} />
+          <Route path="/pins" element={<PinAlerts user={user} />} />
           
           {/* Default redirect based on role */}
           <Route 

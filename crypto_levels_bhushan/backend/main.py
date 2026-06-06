@@ -50,9 +50,23 @@ _push_scheduler = None
 @asynccontextmanager
 async def _app_lifespan(application: FastAPI):
     global _push_scheduler
-    from apscheduler.schedulers.background import BackgroundScheduler
-    from apscheduler.triggers.cron import CronTrigger
-    from push_notifications import VAPID_PRIVATE_KEY, run_morning_nifty_push
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.triggers.cron import CronTrigger
+        from push_notifications import VAPID_PRIVATE_KEY, run_morning_nifty_push
+        from pin_alerts import ensure_pin_indexes
+        from pin_alert_monitor import run_pin_alert_monitor
+    except ImportError as exc:
+        print(f"[SCHEDULER] APScheduler or pin modules missing — {exc}")
+        yield
+        return
+
+    try:
+        coll = get_mongo_connection()
+        ensure_pin_indexes(coll.database)
+        print("[PIN ALERTS] MongoDB indexes ready")
+    except Exception as exc:
+        print(f"[PIN ALERTS] Index setup failed: {exc}")
 
     if VAPID_PRIVATE_KEY:
         def _morning_job():
@@ -64,6 +78,16 @@ async def _app_lifespan(application: FastAPI):
             except Exception as exc:
                 print(f"[MORNING PUSH ERROR] {exc}")
 
+        def _pin_monitor_job():
+            try:
+                coll = get_mongo_connection()
+                db = coll.database
+                result = run_pin_alert_monitor(db)
+                if result.get("crosses") or result.get("errors"):
+                    print(f"[PIN ALERT MONITOR] {result}")
+            except Exception as exc:
+                print(f"[PIN ALERT MONITOR ERROR] {exc}")
+
         _push_scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
         _push_scheduler.add_job(
             _morning_job,
@@ -71,8 +95,16 @@ async def _app_lifespan(application: FastAPI):
             id="morning_nifty_push",
             replace_existing=True,
         )
+        _push_scheduler.add_job(
+            _pin_monitor_job,
+            "interval",
+            seconds=30,
+            id="pin_alert_monitor",
+            replace_existing=True,
+        )
         _push_scheduler.start()
         print("[MORNING PUSH] Scheduler active — 8:00 AM IST daily")
+        print("[PIN ALERTS] Price monitor active — every 30s")
     else:
         print("[MORNING PUSH] VAPID_PRIVATE_KEY not set — scheduler disabled")
 
@@ -832,10 +864,13 @@ def health_check():
                 "/api/market/quote/{symbol}",
                 "/api/market/news/{symbol}",
                 "/api/market/morning-nifty-preview",
+                "/api/market/dashboard",
                 "/api/push/vapid-public-key",
                 "/api/push/subscribe",
                 "/api/push/unsubscribe",
                 "/api/push/test",
+                "/api/pins",
+                "/api/pins/sync",
             ],
         }
     except Exception as e:
@@ -892,8 +927,13 @@ def market_quote(symbol: str, market_type: Optional[str] = "crypto"):
     mtype = market_type or "crypto"
     if mtype in ("indian_stock", "indian_stocks", "indian"):
         mtype = "indian_stocks"
-    elif mtype not in ("crypto", "indian_stocks"):
-        raise HTTPException(status_code=400, detail="market_type must be crypto or indian_stocks")
+    elif mtype in ("forex", "commodity"):
+        mtype = "forex"
+    elif mtype not in ("crypto", "indian_stocks", "forex"):
+        raise HTTPException(
+            status_code=400,
+            detail="market_type must be crypto, indian_stocks, or forex",
+        )
     try:
         return get_market_quote(symbol, mtype)
     except ValueError as e:
@@ -930,6 +970,17 @@ def market_news(
             limit=limit,
             sources=sources,
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/market/dashboard")
+def market_dashboard():
+    """Nifty 50, Bank Nifty, US100, gold, BTC — LTP vs previous close."""
+    try:
+        from market_dashboard import get_market_dashboard
+
+        return get_market_dashboard()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -990,7 +1041,10 @@ def push_subscribe(
             user_id=user_id,
             user_agent=user_agent,
         )
-        return {"success": True, "message": "Subscribed to morning Nifty 50 alerts"}
+        return {
+            "success": True,
+            "message": "Subscribed — morning Nifty alerts and pin price alerts",
+        }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -1030,7 +1084,7 @@ def push_test(authorization: Optional[str] = Header(None)):
         stats = broadcast_push(
             db,
             "Crypto Levels — test",
-            "Morning Nifty 50 alerts are enabled. You will get movers ≥2% at 8 AM IST.",
+            "Pin price alerts and morning Nifty alerts are enabled.",
             url="/monitor",
             user_id=user_id,
         )
@@ -1044,6 +1098,139 @@ def push_test(authorization: Optional[str] = Header(None)):
         raise
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class PinUpsertRequest(BaseModel):
+    symbol: str
+    market_type: str = "crypto"
+    alert_above: Optional[float] = None
+    alert_below: Optional[float] = None
+
+
+class PinSyncEntry(BaseModel):
+    symbol: str
+    market_type: str = "crypto"
+    alert_above: Optional[float] = None
+    alert_below: Optional[float] = None
+
+
+class PinSyncRequest(BaseModel):
+    pins: List[PinSyncEntry]
+
+
+def _user_from_auth(authorization: Optional[str]) -> Optional[dict]:
+    from push_notifications import user_id_from_token
+    from auth import decode_access_token
+    from bson import ObjectId
+
+    user_id = user_id_from_token(authorization)
+    if not user_id:
+        return None
+    try:
+        coll = get_mongo_connection()
+        user = coll.database.users.find_one({"_id": ObjectId(user_id)})
+        return user
+    except Exception:
+        return None
+
+
+def _require_login(authorization: Optional[str]) -> dict:
+    user = _user_from_auth(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="Login required")
+    return user
+
+
+def _require_admin_or_jarvis(
+    authorization: Optional[str],
+    x_jarvis_key: Optional[str] = Header(None),
+) -> str:
+    from pin_alerts import verify_jarvis_key
+
+    if verify_jarvis_key(x_jarvis_key):
+        return "jarvis"
+    user = _user_from_auth(authorization)
+    if not user:
+        raise HTTPException(status_code=401, detail="Login or Jarvis key required")
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return "web"
+
+
+@app.get("/api/pins")
+def list_pins(authorization: Optional[str] = Header(None)):
+    """List global pinned scrips with live quotes."""
+    _require_login(authorization)
+    try:
+        from pin_alerts import list_pins as fetch_pins
+
+        coll = get_mongo_connection()
+        pins = fetch_pins(coll.database)
+        return {"success": True, "pins": pins, "count": len(pins)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/pins/{symbol}")
+def upsert_pin_route(
+    symbol: str,
+    request: PinUpsertRequest,
+    authorization: Optional[str] = Header(None),
+    x_jarvis_key: Optional[str] = Header(None),
+):
+    source = _require_admin_or_jarvis(authorization, x_jarvis_key)
+    try:
+        from pin_alerts import upsert_pin
+
+        coll = get_mongo_connection()
+        created_by = source
+        pin = upsert_pin(
+            coll.database,
+            symbol,
+            request.market_type,
+            alert_above=request.alert_above,
+            alert_below=request.alert_below,
+            created_by=created_by,
+        )
+        return {"success": True, "pin": pin}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/pins/{symbol}")
+def delete_pin_route(
+    symbol: str,
+    authorization: Optional[str] = Header(None),
+    x_jarvis_key: Optional[str] = Header(None),
+):
+    _require_admin_or_jarvis(authorization, x_jarvis_key)
+    try:
+        from pin_alerts import delete_pin
+
+        coll = get_mongo_connection()
+        removed = delete_pin(coll.database, symbol)
+        return {"success": True, "removed": removed}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/pins/sync")
+def sync_pins_route(
+    request: PinSyncRequest,
+    x_jarvis_key: Optional[str] = Header(None),
+):
+    from pin_alerts import sync_pins, verify_jarvis_key
+
+    if not verify_jarvis_key(x_jarvis_key):
+        raise HTTPException(status_code=401, detail="Invalid Jarvis sync key")
+
+    try:
+        coll = get_mongo_connection()
+        entries = [p.model_dump() for p in request.pins]
+        result = sync_pins(coll.database, entries, created_by="jarvis")
+        return {"success": True, **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
