@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import AdminUsers from './pages/AdminUsers';
 import PinAlerts from './pages/PinAlerts';
 import Navbar from './components/Navbar';
+import PwaShell from './components/PwaShell';
 import './App.css';
 import './App_Premium.css';
 
@@ -86,7 +87,7 @@ function App() {
     <Router>
       <div className="App">
         <Navbar user={user} onLogout={handleLogout} refreshTrigger={refreshNavbar} />
-        
+        <PwaShell />
         <Routes>
           {/* Admin routes */}
           {user.role === 'admin' && (

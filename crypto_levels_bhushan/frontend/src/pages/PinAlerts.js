@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import InstallPrompt from '../components/InstallPrompt';
 import PriceAlertPanel from '../components/PriceAlertPanel';
 import MorningAlertPanel from '../components/MorningAlertPanel';
 import './PinAlerts.css';
@@ -137,7 +136,6 @@ function PinAlerts({ user }) {
         </header>
 
         <section className="pin-notify-section">
-          <InstallPrompt />
           <PriceAlertPanel />
           <MorningAlertPanel />
         </section>

@@ -2,22 +2,32 @@
   margin-bottom: 1rem;
 }
 
-.install-prompt-inner {
-  background: linear-gradient(135deg, #0d2840 0%, #143550 100%);
-  border: 1px solid #1a4a6a;
-  border-radius: 12px;
-  padding: 14px 16px;
-  color: #e8f4ff;
+.install-prompt-fixed {
+  position: fixed;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 16px;
+  right: 16px;
+  z-index: 1200;
+  margin-bottom: 0;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.install-btn {
-  min-height: 44px;
+.install-prompt-inner {
+  background: linear-gradient(135deg, #0d2840 0%, #143550 100%);
+  border: 1px solid #1a5a7a;
+  border-radius: 14px;
+  padding: 16px;
+  color: #e8f4ff;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 }
 
 .install-prompt-inner p {
-  margin: 6px 0 12px;
-  font-size: 0.9rem;
+  margin: 8px 0 14px;
+  font-size: 0.88rem;
   color: #8cd9ff;
+  line-height: 1.45;
 }
 
 .install-prompt-actions {
@@ -28,9 +38,11 @@
 
 .install-btn {
   border: none;
-  border-radius: 6px;
-  padding: 8px 14px;
+  border-radius: 10px;
+  padding: 12px 18px;
+  min-height: 44px;
   font-weight: 600;
+  font-size: 14px;
   cursor: pointer;
 }
 
