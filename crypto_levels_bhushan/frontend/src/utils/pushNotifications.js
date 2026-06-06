@@ -3,6 +3,7 @@
  */
 
 import { iosWebPushRequiresInstall } from './pushPlatform';
+import { waitForServiceWorkerRegistration } from './pwa';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -35,10 +36,9 @@ function urlBase64ToUint8Array(base64String) {
 }
 
 export async function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) {
-    throw new Error('Service workers not supported');
-  }
-  return navigator.serviceWorker.register(`${process.env.PUBLIC_URL || ''}/sw.js`);
+  const reg = await waitForServiceWorkerRegistration();
+  if (!reg) throw new Error('Service workers not supported');
+  return reg;
 }
 
 export async function requestNotificationPermission() {
@@ -58,8 +58,8 @@ export async function sendLocalTestNotification() {
   if (Notification.permission !== 'granted') {
     throw new Error('Notification permission not granted');
   }
-  await registerServiceWorker();
-  const registration = await navigator.serviceWorker.ready;
+  const registration = await registerServiceWorker();
+  await navigator.serviceWorker.ready;
   await registration.showNotification('Crypto Levels — test', {
     body: 'Local test OK. Pin price alerts and 8 AM Nifty alerts will arrive here.',
     icon: '/favicon.ico',

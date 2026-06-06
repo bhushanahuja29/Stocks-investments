@@ -122,6 +122,7 @@ screenshots/
 *.jpg
 *.jpeg
 !crypto_levels_bhushan/frontend/public/*.png
+!crypto_levels_bhushan/frontend/public/icons/*.png
 
 # Auto-generated JSON files
 auto_scrape_progress.json

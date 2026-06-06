@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { promptInstallFromButton } from './InstallPrompt';
+import { isIos, isStandalonePwa } from '../utils/pushPlatform';
 import './Navbar.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -78,6 +80,24 @@ function Navbar({ user, onLogout, refreshTrigger }) {
     navigate('/pins');
   };
 
+  const handleInstallClick = async () => {
+    closeMenu();
+    if (isStandalonePwa()) {
+      window.alert('App is already installed.');
+      return;
+    }
+    if (isIos()) {
+      window.alert('Safari → Share → Add to Home Screen, then open Delta Levels from your home screen.');
+      return;
+    }
+    const result = await promptInstallFromButton();
+    if (!result.ok && result.reason === 'no_prompt') {
+      window.alert(
+        'Install not ready yet. Use Chrome menu (⋮) → Install app, or Add to Home screen. Visit the site a few times on HTTPS first.'
+      );
+    }
+  };
+
   const navItems = [
     { to: '/monitor', label: 'Monitor', icon: '📊' },
     { to: '/pins', label: 'Pins', icon: '📌' },
@@ -112,6 +132,11 @@ function Navbar({ user, onLogout, refreshTrigger }) {
               ))}
             </div>
             <div className="navbar-actions-desktop">
+              {!isStandalonePwa() && (
+                <button type="button" className="alerts-chip" onClick={handleInstallClick} title="Install app">
+                  📲 Install
+                </button>
+              )}
               <button
                 type="button"
                 className="alerts-chip"
@@ -193,6 +218,12 @@ function Navbar({ user, onLogout, refreshTrigger }) {
             <span className="nav-icon">🔔</span>
             Price alerts & push
           </button>
+          {!isStandalonePwa() && (
+            <button type="button" className="drawer-alerts-link" onClick={handleInstallClick}>
+              <span className="nav-icon">📲</span>
+              Install app
+            </button>
+          )}
         </nav>
 
         {user.role !== 'admin' && user.days_remaining !== undefined && (

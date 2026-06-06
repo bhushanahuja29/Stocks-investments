@@ -1,16 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import {
+  clearDeferredInstallPrompt,
+  setDeferredInstallPrompt,
+  triggerInstallPrompt,
+} from '../utils/pwa';
 import { isIos, isStandalonePwa } from '../utils/pushPlatform';
 import './InstallPrompt.css';
 
 const DISMISS_KEY = 'crypto_levels_install_dismissed';
-const VISITS_KEY = 'crypto_levels_visits';
-
-function shouldShowInstallPrompt() {
-  if (localStorage.getItem(DISMISS_KEY) === '1') return false;
-  if (isStandalonePwa()) return false;
-  const visits = Number(localStorage.getItem(VISITS_KEY) || 0);
-  return visits >= 1;
-}
 
 function IosInstallHint({ onDismiss }) {
   return (
@@ -18,8 +15,8 @@ function IosInstallHint({ onDismiss }) {
       <div className="install-prompt-inner">
         <strong>Install on iPhone</strong>
         <p>
-          Tap <strong>Share</strong> in Safari, then <strong>Add to Home Screen</strong>.
-          Open the app from your home screen for push alerts.
+          In Safari tap <strong>Share</strong> (bottom bar), then <strong>Add to Home Screen</strong>.
+          Open Delta Levels from your home screen for push alerts.
         </p>
         <div className="install-prompt-actions">
           <button type="button" className="install-btn ghost" onClick={onDismiss}>
@@ -32,31 +29,32 @@ function IosInstallHint({ onDismiss }) {
 }
 
 function InstallPrompt() {
-  const [deferred, setDeferred] = useState(null);
   const [visible, setVisible] = useState(false);
   const [iosHint, setIosHint] = useState(false);
+  const [canInstall, setCanInstall] = useState(false);
 
   useEffect(() => {
-    const visits = Number(localStorage.getItem(VISITS_KEY) || 0);
-    localStorage.setItem(VISITS_KEY, String(visits + 1));
-
     if (isStandalonePwa()) return undefined;
 
-    if (isIos() && shouldShowInstallPrompt()) {
-      setIosHint(true);
+    if (isIos()) {
+      const dismissed = localStorage.getItem(DISMISS_KEY) === '1';
+      if (!dismissed) setIosHint(true);
     }
 
     const onInstall = (e) => {
       e.preventDefault();
-      setDeferred(e);
-      if (shouldShowInstallPrompt()) {
+      setDeferredInstallPrompt(e);
+      setCanInstall(true);
+      if (localStorage.getItem(DISMISS_KEY) !== '1') {
         setVisible(true);
       }
     };
+
     const onInstalled = () => {
+      clearDeferredInstallPrompt();
       setVisible(false);
       setIosHint(false);
-      setDeferred(null);
+      setCanInstall(false);
     };
 
     window.addEventListener('beforeinstallprompt', onInstall);
@@ -68,11 +66,11 @@ function InstallPrompt() {
   }, []);
 
   const install = async () => {
-    if (!deferred?.prompt) return;
-    await deferred.prompt();
-    await deferred.userChoice;
-    setVisible(false);
-    setDeferred(null);
+    const result = await triggerInstallPrompt();
+    if (result.ok) {
+      setVisible(false);
+      setCanInstall(false);
+    }
   };
 
   const dismiss = () => {
@@ -81,16 +79,16 @@ function InstallPrompt() {
     setIosHint(false);
   };
 
-  if (iosHint && !visible) {
+  if (iosHint && !visible && !canInstall) {
     return <IosInstallHint onDismiss={dismiss} />;
   }
 
-  if (!visible) return null;
+  if (!visible || !canInstall) return null;
 
   return (
     <div className="install-prompt install-prompt-fixed">
       <div className="install-prompt-inner">
-        <strong>Install Crypto Levels</strong>
+        <strong>Install Delta Levels</strong>
         <p>Add to your home screen for pin price alerts even when the browser is closed.</p>
         <div className="install-prompt-actions">
           <button type="button" className="install-btn primary" onClick={install}>
@@ -103,6 +101,18 @@ function InstallPrompt() {
       </div>
     </div>
   );
+}
+
+export async function promptInstallFromButton() {
+  if (isStandalonePwa()) {
+    return { ok: true, already: true };
+  }
+  if (isIos()) {
+    return { ok: false, reason: 'ios_manual' };
+  }
+  const result = await triggerInstallPrompt();
+  if (result.ok) return result;
+  return { ok: false, reason: result.reason || 'no_prompt' };
 }
 
 export default InstallPrompt;

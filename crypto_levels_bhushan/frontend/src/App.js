@@ -35,15 +35,6 @@ function App() {
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    if (!user || loading) return;
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register(`${process.env.PUBLIC_URL || ''}/sw.js`)
-        .catch((err) => console.warn('[SW] register failed:', err));
-    }
-  }, [user, loading]);
-
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -70,10 +61,11 @@ function App() {
     );
   }
 
-  // If not logged in, show only login page
+  // If not logged in, show login with PWA install shell
   if (!user) {
     return (
       <Router>
+        <PwaShell />
         <Routes>
           <Route path="/login" element={<Login setUser={setUser} />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
