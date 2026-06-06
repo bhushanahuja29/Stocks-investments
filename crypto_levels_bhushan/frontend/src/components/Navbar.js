@@ -1,328 +1,211 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import MorningAlertPanel from './MorningAlertPanel';
 import './Navbar.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-
 function Navbar({ user, onLogout, refreshTrigger }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [notificationPermission, setNotificationPermission] = useState('default');
   const [triggeredCount, setTriggeredCount] = useState(0);
-  const [triggeredLevels, setTriggeredLevels] = useState([]);
-  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate(); // Always call hook unconditionally
+  const navigate = useNavigate();
 
   const isActive = (path) => location.pathname === path;
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
 
-  // Check notification permission on mount
   useEffect(() => {
-    if ('Notification' in window) {
-      setNotificationPermission(Notification.permission);
-    }
-  }, []);
+    closeMenu();
+  }, [location.pathname, closeMenu]);
 
-  // Fetch triggered levels count and details
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [menuOpen]);
+
   useEffect(() => {
     const fetchTriggeredCount = async () => {
       try {
         const response = await fetch(`${API_URL}/api/scrips`);
         const data = await response.json();
-        
-        if (data.success) {
-          let count = 0;
-          const levels = [];
-          
-          // Fetch prices for all scrips
-          const pricePromises = data.scrips.map(async (scrip) => {
-            try {
-              const priceResponse = await fetch(
-                `${API_URL}/api/price/${scrip.symbol}?market_type=${scrip.market_type || 'crypto'}`
-              );
-              const priceData = await priceResponse.json();
-              return {
-                symbol: scrip.symbol,
-                price: priceData.success ? priceData.mark_price : null
-              };
-            } catch (error) {
-              console.error(`Error fetching price for ${scrip.symbol}:`, error);
-              return { symbol: scrip.symbol, price: null };
-            }
-          });
-          
-          const prices = await Promise.all(pricePromises);
-          const priceMap = {};
-          prices.forEach(p => {
-            if (p.price) priceMap[p.symbol] = p.price;
-          });
-          
-          // Check each level against current price
-          data.scrips.forEach(scrip => {
-            const currentPrice = priceMap[scrip.symbol];
-            
-            if (scrip.trigger_levels && currentPrice) {
-              scrip.trigger_levels.forEach((level, idx) => {
-                // Check if alert is enabled
-                if (level.alert_disabled) return;
-                
-                // Check if price has triggered the level (price <= trigger_price)
-                const isTriggered = currentPrice <= level.trigger_price;
-                
-                if (isTriggered) {
-                  count++;
-                  levels.push({
-                    symbol: scrip.symbol,
-                    levelIndex: idx,
-                    triggerPrice: level.trigger_price,
-                    bottom: level.bottom,
-                    timeframe: level.timeframe || 'UNKNOWN',
-                    rallyLength: level.rally_length,
-                    totalMovePct: level.total_move_pct,
-                    marketType: scrip.market_type || 'crypto',
-                    currentPrice: currentPrice
-                  });
-                }
-              });
-            }
-          });
-          
-          setTriggeredCount(count);
-          setTriggeredLevels(levels);
-        }
-      } catch (error) {
-        console.error('Error fetching triggered count:', error);
+        if (!data.success) return;
+
+        let count = 0;
+        const pricePromises = data.scrips.map(async (scrip) => {
+          try {
+            const priceResponse = await fetch(
+              `${API_URL}/api/price/${scrip.symbol}?market_type=${scrip.market_type || 'crypto'}`
+            );
+            const priceData = await priceResponse.json();
+            return {
+              symbol: scrip.symbol,
+              price: priceData.success ? priceData.mark_price : null,
+            };
+          } catch {
+            return { symbol: scrip.symbol, price: null };
+          }
+        });
+
+        const prices = await Promise.all(pricePromises);
+        const priceMap = {};
+        prices.forEach((p) => {
+          if (p.price) priceMap[p.symbol] = p.price;
+        });
+
+        data.scrips.forEach((scrip) => {
+          const currentPrice = priceMap[scrip.symbol];
+          if (scrip.trigger_levels && currentPrice) {
+            scrip.trigger_levels.forEach((level) => {
+              if (!level.alert_disabled && currentPrice <= level.trigger_price) {
+                count += 1;
+              }
+            });
+          }
+        });
+        setTriggeredCount(count);
+      } catch {
+        /* ignore */
       }
     };
 
-    // Fetch immediately
     fetchTriggeredCount();
-
-    // Refresh every 30 seconds
     const interval = setInterval(fetchTriggeredCount, 30000);
-
     return () => clearInterval(interval);
-  }, [refreshTrigger]); // Re-fetch when refreshTrigger changes
+  }, [refreshTrigger]);
 
-  const handleNotificationClick = () => {
-    setShowNotificationDropdown(!showNotificationDropdown);
+  const handleAlertsClick = () => {
+    closeMenu();
+    navigate('/pins');
   };
 
-  const handleLevelClick = async (level) => {
-    // Navigate to monitor page with the symbol selected
-    setShowNotificationDropdown(false);
-    
-    // Store the selected symbol in sessionStorage so Monitor page can select it
-    sessionStorage.setItem('selectedSymbol', level.symbol);
-    sessionStorage.setItem('selectedLevelIndex', level.levelIndex.toString());
-    
-    // Navigate to monitor page
-    navigate('/monitor');
-  };
-
-  const handleDisableAlert = async (level, e) => {
-    e.stopPropagation(); // Prevent level click
-    
-    try {
-      const response = await fetch(`${API_URL}/api/scrips/${level.symbol}/alert`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          symbol: level.symbol,
-          level_index: level.levelIndex,
-          disabled: true
-        })
-      });
-
-      const data = await response.json();
-      
-      if (data.success) {
-        // Remove from triggered levels
-        setTriggeredLevels(prev => prev.filter(l => 
-          !(l.symbol === level.symbol && l.levelIndex === level.levelIndex)
-        ));
-        setTriggeredCount(prev => prev - 1);
-        
-        // Trigger refresh in parent
-        if (refreshTrigger !== undefined) {
-          // This will trigger a re-fetch
-          window.dispatchEvent(new Event('alertToggled'));
-        }
-      }
-    } catch (error) {
-      console.error('Error disabling alert:', error);
-      alert('Failed to disable alert');
-    }
-  };
+  const navItems = [
+    { to: '/monitor', label: 'Monitor', icon: '📊' },
+    { to: '/pins', label: 'Pins', icon: '📌' },
+    { to: '/zone-finder', label: 'Zones', icon: '🔍' },
+  ];
+  if (user.role === 'admin') {
+    navItems.push({ to: '/admin/users', label: 'Users', icon: '👥' });
+  }
 
   return (
-    <nav className="navbar">
-      <div className="navbar-container">
-        <div className="navbar-brand">
-          <span className="brand-icon">🎯</span>
-          <div className="brand-text">
-            <h2>Delta Levels</h2>
-            <span>Support & Resistance Tracker</span>
-          </div>
-        </div>
+    <>
+      <nav className="navbar">
+        <div className="navbar-container">
+          <Link to="/monitor" className="navbar-brand" onClick={closeMenu}>
+            <span className="brand-icon">◆</span>
+            <div className="brand-text">
+              <h2>Delta Levels</h2>
+              <span>Crypto & NSE tracker</span>
+            </div>
+          </Link>
 
-        <button 
-          className="hamburger"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label="Toggle menu"
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-
-        <div className={`navbar-menu ${menuOpen ? 'open' : ''}`}>
-          <button 
-            className="close-menu-btn"
-            onClick={() => setMenuOpen(false)}
-            aria-label="Close menu"
-          >
-            ✕
-          </button>
-          
-          <div className="nav-links">
-            <Link 
-              to="/monitor" 
-              className={isActive('/monitor') ? 'active' : ''}
-              onClick={() => setMenuOpen(false)}
-            >
-              📊 Monitor
-            </Link>
-            <Link 
-              to="/zone-finder" 
-              className={isActive('/zone-finder') ? 'active' : ''}
-              onClick={() => setMenuOpen(false)}
-            >
-              🔍 Zone Finder
-            </Link>
-            <Link 
-              to="/pins" 
-              className={isActive('/pins') ? 'active' : ''}
-              onClick={() => setMenuOpen(false)}
-            >
-              📌 Pins
-            </Link>
-            {user.role === 'admin' && (
-              <Link 
-                to="/admin/users" 
-                className={isActive('/admin/users') ? 'active' : ''}
-                onClick={() => setMenuOpen(false)}
+          <div className="navbar-desktop">
+            <div className="nav-links">
+              {navItems.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={isActive(item.to) ? 'active' : ''}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+            <div className="navbar-actions-desktop">
+              <button
+                type="button"
+                className="alerts-chip"
+                onClick={handleAlertsClick}
+                title="Pin alerts & notifications"
               >
-                👥 Users
-              </Link>
-            )}
-          </div>
-
-          <div className="navbar-actions">
-            <div className="notification-container">
-              <button 
-                className={`notification-btn ${notificationPermission === 'granted' ? 'enabled' : ''}`}
-                onClick={handleNotificationClick}
-                title={
-                  notificationPermission === 'granted' 
-                    ? `Notifications enabled${triggeredCount > 0 ? ` - ${triggeredCount} triggered` : ''}` 
-                    : notificationPermission === 'denied'
-                    ? 'Notifications blocked'
-                    : 'Enable notifications'
-                }
-              >
-                {notificationPermission === 'granted' ? '🔔' : '🔕'}
+                🔔 Alerts
                 {triggeredCount > 0 && (
                   <span className="notification-badge">{triggeredCount}</span>
                 )}
               </button>
-
-              {showNotificationDropdown && (
-                <>
-                  <div className="notification-dropdown">
-                    <div className="notification-header">
-                      <h3>Triggered Levels ({triggeredCount})</h3>
-                      <button 
-                        className="close-dropdown"
-                        onClick={() => setShowNotificationDropdown(false)}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    
-                    <MorningAlertPanel />
-
-                    {triggeredLevels.length === 0 ? (
-                      <div className="no-notifications">
-                        <p>No triggered levels</p>
-                        <span>All clear! 🎉</span>
-                      </div>
-                    ) : (
-                      <div className="notification-list">
-                        {triggeredLevels.map((level, idx) => (
-                          <div 
-                            key={`${level.symbol}-${level.levelIndex}`}
-                            className="notification-item"
-                            onClick={() => handleLevelClick(level)}
-                          >
-                            <div className="notification-item-header">
-                              <span className="notification-symbol">{level.symbol}</span>
-                              <span className="notification-timeframe">{level.timeframe}</span>
-                            </div>
-                            <div className="notification-item-details">
-                              <span className="notification-price">
-                                Trigger: ${level.triggerPrice.toFixed(2)} | Current: ${level.currentPrice.toFixed(2)}
-                              </span>
-                              <span className="notification-move">
-                                {level.rallyLength} bars • {level.totalMovePct.toFixed(1)}%
-                              </span>
-                            </div>
-                            <button 
-                              className="disable-alert-btn"
-                              onClick={(e) => handleDisableAlert(level, e)}
-                              title="Disable alert for this level"
-                            >
-                              🔕 Disable
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div 
-                    className="notification-overlay"
-                    onClick={() => setShowNotificationDropdown(false)}
-                  ></div>
-                </>
-              )}
-            </div>
-
-            <div className="navbar-user">
-              <div className="user-info">
-                <div className="user-details">
-                  <span className="user-name">{user.name}</span>
-                  <span className="user-role">{user.role}</span>
-                </div>
-                {user.role !== 'admin' && user.days_remaining !== undefined && (
-                  <div className={`days-remaining ${user.days_remaining <= 7 ? 'warning' : ''}`}>
-                    {user.days_remaining} days left
-                  </div>
-                )}
+              <div className="user-chip">
+                <span className="user-name">{user.name}</span>
+                <span className="user-role">{user.role}</span>
               </div>
-              <button className="logout-btn" onClick={onLogout}>
+              <button type="button" className="logout-btn" onClick={onLogout}>
                 Logout
               </button>
             </div>
           </div>
+
+          <div className="navbar-mobile-bar">
+            <button
+              type="button"
+              className="mobile-alerts-btn"
+              onClick={handleAlertsClick}
+              aria-label="Alerts"
+            >
+              🔔
+              {triggeredCount > 0 && (
+                <span className="notification-badge">{triggeredCount}</span>
+              )}
+            </button>
+            <button
+              type="button"
+              className={`hamburger ${menuOpen ? 'open' : ''}`}
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <div
+        className={`mobile-drawer-backdrop ${menuOpen ? 'visible' : ''}`}
+        onClick={closeMenu}
+        aria-hidden={!menuOpen}
+      />
+
+      <aside className={`mobile-drawer ${menuOpen ? 'open' : ''}`} aria-hidden={!menuOpen}>
+        <div className="mobile-drawer-header">
+          <div>
+            <strong>{user.name}</strong>
+            <span className="user-role">{user.role}</span>
+          </div>
+          <button type="button" className="drawer-close" onClick={closeMenu} aria-label="Close">
+            ✕
+          </button>
         </div>
 
-        {menuOpen && (
-          <div className="menu-overlay show" onClick={() => setMenuOpen(false)}></div>
+        <nav className="mobile-drawer-nav">
+          {navItems.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={isActive(item.to) ? 'active' : ''}
+              onClick={closeMenu}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              {item.label}
+            </Link>
+          ))}
+          <button type="button" className="drawer-alerts-link" onClick={handleAlertsClick}>
+            <span className="nav-icon">🔔</span>
+            Price alerts & push
+          </button>
+        </nav>
+
+        {user.role !== 'admin' && user.days_remaining !== undefined && (
+          <div className={`drawer-days ${user.days_remaining <= 7 ? 'warning' : ''}`}>
+            {user.days_remaining} days remaining
+          </div>
         )}
-      </div>
-    </nav>
+
+        <button type="button" className="drawer-logout" onClick={onLogout}>
+          Logout
+        </button>
+      </aside>
+    </>
   );
 }
 

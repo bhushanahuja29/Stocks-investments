@@ -1,4 +1,5 @@
-/* Crypto Levels — Web Push service worker */
+/* Crypto Levels — Web Push service worker v2 */
+const SW_VERSION = 'v2';
 
 const ROUTE_BY_EVENT = {
   morning_nifty: '/monitor',

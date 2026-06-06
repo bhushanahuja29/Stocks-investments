@@ -34,7 +34,7 @@ function PriceAlertPanel() {
         setMessage('Notifications blocked. Enable them in browser settings.');
         return;
       }
-      sendLocalTestNotification();
+      await sendLocalTestNotification();
       setMessage('Local test sent. Subscribing for pin price alerts…');
       await subscribeToPush();
       setSubscribed(true);
@@ -51,7 +51,11 @@ function PriceAlertPanel() {
     setMessage('');
     try {
       const result = await sendServerTestPush();
-      setMessage(`Server test sent (${result.sent} device(s)). Check your notification tray.`);
+      setMessage(
+        result.sent > 0
+          ? `Push sent to ${result.sent} device(s). Check your phone notification tray (not this page).`
+          : 'No subscription found — tap Enable first.'
+      );
     } catch (err) {
       setMessage(err.message || String(err));
     } finally {

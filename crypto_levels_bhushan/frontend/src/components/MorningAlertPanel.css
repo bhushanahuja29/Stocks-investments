@@ -1,49 +1,72 @@
 .morning-alert-panel {
-  padding: 12px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 22, 40, 0.95);
-  max-width: 320px;
+  background: #0a1628;
+  border: 1px solid #1a3a55;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
 }
 
 .morning-alert-title {
   margin: 0 0 6px;
-  font-size: 13px;
-  font-weight: 700;
-  color: #56c9ff;
+  color: #8cd9ff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .morning-alert-desc,
-.morning-alert-status,
-.morning-alert-muted,
-.morning-alert-msg,
-.morning-alert-warn {
+.morning-alert-muted {
   margin: 0 0 8px;
-  font-size: 11px;
-  line-height: 1.4;
+  color: #6a8aaa;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.morning-alert-status {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
   color: #8cd9ff;
-}
-
-.morning-alert-msg {
-  color: #84ffc9;
-}
-
-.morning-alert-warn {
-  color: #ff6b8a;
 }
 
 .morning-alert-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (min-width: 400px) {
+  .morning-alert-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
 }
 
 .morning-btn {
   border: none;
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 11px;
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-height: 44px;
   font-weight: 600;
+  font-size: 14px;
   cursor: pointer;
+  flex: 1;
+  min-width: 140px;
+}
+
+.morning-btn.primary {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.morning-btn.secondary {
+  background: #143550;
+  color: #56c9ff;
+}
+
+.morning-btn.danger {
+  background: #2a1020;
+  color: #ff6b8a;
 }
 
 .morning-btn:disabled {
@@ -51,17 +74,15 @@
   cursor: not-allowed;
 }
 
-.morning-btn.primary {
-  background: #0d2840;
-  color: #56c9ff;
+.morning-alert-msg {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  color: #84ffc9;
+  line-height: 1.4;
 }
 
-.morning-btn.secondary {
-  background: #1a3a55;
-  color: #fff;
-}
-
-.morning-btn.danger {
-  background: #2a1020;
-  color: #ff6b8a;
+.morning-alert-warn {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  color: #ffb347;
 }

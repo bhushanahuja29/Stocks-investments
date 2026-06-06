@@ -1085,8 +1085,10 @@ def push_test(authorization: Optional[str] = Header(None)):
             db,
             "Crypto Levels — test",
             "Pin price alerts and morning Nifty alerts are enabled.",
-            url="/monitor",
+            url="/pins",
             user_id=user_id,
+            tag="test-push",
+            event="pin_alert",
         )
         if stats["sent"] == 0:
             raise HTTPException(

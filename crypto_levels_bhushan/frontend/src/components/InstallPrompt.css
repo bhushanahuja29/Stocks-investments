@@ -5,9 +5,13 @@
 .install-prompt-inner {
   background: linear-gradient(135deg, #0d2840 0%, #143550 100%);
   border: 1px solid #1a4a6a;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 14px 16px;
   color: #e8f4ff;
+}
+
+.install-btn {
+  min-height: 44px;
 }
 
 .install-prompt-inner p {

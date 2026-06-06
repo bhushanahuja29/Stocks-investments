@@ -1,44 +1,46 @@
 .price-alert-panel {
-  background: #0a1628;
-  border: 1px solid #1a3a55;
-  border-radius: 10px;
-  padding: 14px 16px;
-  margin-bottom: 1rem;
+  background: linear-gradient(135deg, #0d2840 0%, #0a1628 100%);
+  border: 1px solid #1a5a7a;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
 }
 
 .price-alert-title {
   margin: 0 0 6px;
   color: #56c9ff;
   font-size: 1rem;
+  font-weight: 700;
 }
 
 .price-alert-desc,
 .price-alert-muted {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   color: #8cd9ff;
   font-size: 0.85rem;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 .price-alert-status {
-  margin: 0 0 10px;
-  font-size: 0.85rem;
-  color: #ccc;
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: #6a8aaa;
 }
 
 .price-alert-actions {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .price-btn {
   border: none;
-  border-radius: 6px;
-  padding: 8px 12px;
+  border-radius: 10px;
+  padding: 14px 16px;
+  min-height: 48px;
   font-weight: 600;
+  font-size: 15px;
   cursor: pointer;
-  font-size: 0.85rem;
 }
 
 .price-btn.primary {
@@ -49,6 +51,7 @@
 .price-btn.secondary {
   background: #143550;
   color: #56c9ff;
+  border: 1px solid #1a5a7a;
 }
 
 .price-btn.danger {
@@ -61,10 +64,15 @@
   cursor: not-allowed;
 }
 
+.price-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
 .price-alert-msg {
-  margin: 10px 0 0;
+  margin: 12px 0 0;
   font-size: 0.85rem;
   color: #84ffc9;
+  line-height: 1.4;
 }
 
 .price-alert-warn {

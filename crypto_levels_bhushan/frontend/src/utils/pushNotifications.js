@@ -53,14 +53,20 @@ export async function requestNotificationPermission() {
   return Notification.requestPermission();
 }
 
-export function sendLocalTestNotification() {
+/** Mobile/PWA requires showNotification via service worker, not new Notification(). */
+export async function sendLocalTestNotification() {
   if (Notification.permission !== 'granted') {
     throw new Error('Notification permission not granted');
   }
-  new Notification('Crypto Levels — test', {
+  await registerServiceWorker();
+  const registration = await navigator.serviceWorker.ready;
+  await registration.showNotification('Crypto Levels — test', {
     body: 'Local test OK. Pin price alerts and 8 AM Nifty alerts will arrive here.',
     icon: '/favicon.ico',
+    badge: '/favicon.ico',
     tag: 'test-local',
+    data: { url: '/pins', event: 'pin_alert' },
+    renotify: true,
   });
 }
 

@@ -136,9 +136,11 @@ function PinAlerts({ user }) {
           </p>
         </header>
 
-        <InstallPrompt />
-        <PriceAlertPanel />
-        <MorningAlertPanel />
+        <section className="pin-notify-section">
+          <InstallPrompt />
+          <PriceAlertPanel />
+          <MorningAlertPanel />
+        </section>
 
         {loading && <p className="pin-loading">Loading pins…</p>}
         {error && <p className="pin-error">{error}</p>}

@@ -33,7 +33,7 @@ function MorningAlertPanel() {
         setMessage('Notifications blocked. Enable them in browser settings.');
         return;
       }
-      sendLocalTestNotification();
+      await sendLocalTestNotification();
       setMessage('Local test sent. Subscribing for 8 AM pushes…');
       await subscribeToPush();
       setSubscribed(true);

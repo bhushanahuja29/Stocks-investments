@@ -1,43 +1,66 @@
 .pin-alerts-page {
-  min-height: calc(100vh - 80px);
+  min-height: calc(100dvh - 56px);
   background: #02030a;
   color: #e8f4ff;
-  padding: 24px 16px 48px;
+  padding: 16px 12px calc(24px + env(safe-area-inset-bottom, 0));
 }
 
 .pin-alerts-container {
-  max-width: 960px;
+  max-width: 720px;
   margin: 0 auto;
+}
+
+.pin-alerts-header {
+  margin-bottom: 20px;
 }
 
 .pin-alerts-header h1 {
   margin: 0 0 8px;
+  font-size: clamp(1.35rem, 5vw, 1.75rem);
   color: #56c9ff;
+  font-weight: 700;
 }
 
 .pin-alerts-header p {
-  margin: 0 0 20px;
+  margin: 0;
   color: #8cd9ff;
   line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+.pin-notify-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .pin-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-  margin-top: 20px;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+@media (min-width: 520px) {
+  .pin-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .pin-card {
   background: #0a1628;
   border: 1px solid #1a3a55;
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 16px;
+  transition: border-color 0.2s;
+}
+
+.pin-card.live {
+  border-color: #1a5a7a;
 }
 
 .pin-card.paused {
-  opacity: 0.85;
-  border-color: #2a3a4a;
+  opacity: 0.88;
 }
 
 .pin-card-header {
@@ -49,18 +72,30 @@
 
 .pin-card-header h3 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
 }
 
 .pin-market-type {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   color: #6a8aaa;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  background: #0d2840;
+  border-radius: 4px;
 }
 
 .pin-price {
-  font-size: 1.6rem;
+  font-size: clamp(1.4rem, 6vw, 1.75rem);
   font-weight: 700;
+  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+
+.pin-change {
+  font-size: 0.9rem;
+  font-weight: 600;
   margin-bottom: 4px;
 }
 
@@ -75,54 +110,78 @@
 .pin-session {
   font-size: 0.75rem;
   color: #ffb347;
-  margin: 6px 0;
+  margin: 6px 0 10px;
 }
 
 .pin-alerts-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   margin-top: 12px;
 }
 
 .pin-alerts-row label {
-  flex: 1;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #8cd9ff;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .pin-alerts-row input {
   background: #0d2840;
   border: 1px solid #1a4a6a;
-  border-radius: 6px;
+  border-radius: 8px;
   color: #fff;
-  padding: 6px 8px;
+  padding: 12px 10px;
+  font-size: 16px;
+  min-height: 44px;
+}
+
+.pin-alerts-row input:disabled {
+  opacity: 0.6;
 }
 
 .pin-save-btn {
-  margin-top: 10px;
+  margin-top: 12px;
   width: 100%;
+  min-height: 44px;
   background: #143550;
   color: #56c9ff;
-  border: none;
-  border-radius: 6px;
-  padding: 8px;
+  border: 1px solid #1a5a7a;
+  border-radius: 10px;
+  padding: 12px;
   font-weight: 600;
+  font-size: 15px;
   cursor: pointer;
+}
+
+.pin-save-btn:active {
+  transform: scale(0.98);
 }
 
 .pin-loading,
 .pin-empty,
 .pin-error {
   margin-top: 16px;
+  font-size: 0.9rem;
 }
 
 .pin-error {
   color: #ff6b8a;
+  padding: 12px;
+  background: #2a1020;
+  border-radius: 8px;
 }
 
 .pin-empty {
   color: #8cd9ff;
+  text-align: center;
+  padding: 32px 16px;
+  background: #0a1628;
+  border-radius: 12px;
+  border: 1px dashed #1a3a55;
 }
