@@ -108,7 +108,21 @@ async def _app_lifespan(application: FastAPI):
     else:
         print("[MORNING PUSH] VAPID_PRIVATE_KEY not set — scheduler disabled")
 
+    try:
+        from keepalive import start_keepalive
+
+        start_keepalive()
+    except Exception as exc:
+        print(f"[KEEPALIVE] Could not start: {exc}")
+
     yield
+
+    try:
+        from keepalive import stop_keepalive
+
+        stop_keepalive()
+    except Exception:
+        pass
 
     if _push_scheduler:
         _push_scheduler.shutdown(wait=False)
@@ -845,6 +859,43 @@ class UpdateAlertRequest(BaseModel):
 def read_root():
     return {"message": "Crypto Levels API", "version": "1.0.0"}
 
+@app.get("/api/keepalive")
+def keepalive():
+    """Render self-ping endpoint — keeps free-tier instance awake."""
+    from keepalive_status import record_keepalive_ping
+
+    try:
+        coll = get_mongo_connection()
+        last_ping_at = record_keepalive_ping(
+            coll.database,
+            status="ok",
+            message="Keep-alive ping successful",
+        )
+        return {
+            "success": True,
+            "message": "Keep-alive ping successful",
+            "last_ping_at": last_ping_at.isoformat(),
+        }
+    except Exception as exc:
+        return {
+            "success": True,
+            "message": "Keep-alive ping successful",
+            "db_log_error": str(exc),
+        }
+
+
+@app.get("/api/keepalive/status")
+def keepalive_status():
+    """Last self-ping time and health (for admin monitoring)."""
+    from keepalive_status import get_keepalive_status
+
+    try:
+        coll = get_mongo_connection()
+        return {"success": True, **get_keepalive_status(coll.database)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/health")
 def health_check():
     """Health check endpoint"""
@@ -871,6 +922,8 @@ def health_check():
                 "/api/push/test",
                 "/api/pins",
                 "/api/pins/sync",
+                "/api/keepalive",
+                "/api/keepalive/status",
             ],
         }
     except Exception as e:
