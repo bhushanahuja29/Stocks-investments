@@ -125,6 +125,10 @@ class JarvisUI:
 
         self.log.bind("<MouseWheel>", _on_log_mousewheel)
         log_frame.bind("<MouseWheel>", _on_log_mousewheel)
+        self.log.tag_configure("up", foreground="#84FFC9")
+        self.log.tag_configure("down", foreground="#FF6B8A")
+        self.log.tag_configure("flat", foreground="#A7D8FF")
+        self.log.tag_configure("header", foreground="#56C9FF", font=("Consolas", 10, "bold"))
 
         input_panel = tk.Frame(self.root, bg="#0A1628", highlightbackground="#56C9FF", highlightthickness=1)
         input_panel.grid(row=4, column=0, sticky="ew", padx=18, pady=(0, 16))
@@ -204,6 +208,31 @@ class JarvisUI:
     def append(self, who: str, text: str) -> None:
         self._queue.put(("log", f"{who}\x1f{text}"))
 
+    def append_movers_table(self, who: str, payload: dict) -> None:
+        self._queue.put(("movers_table", (who, payload)))
+
+    def _append_movers_table(self, who: str, payload: dict) -> None:
+        name_w, price_w, chg_w = 24, 12, 8
+        self.log.configure(state=tk.NORMAL)
+        title = payload.get("title", "Index movers")
+        self.log.insert(tk.END, f"{who}: {title}\n", "header")
+        header = f"{'Name':<{name_w}} {'Price':>{price_w}} {'Change':>{chg_w}}\n"
+        self.log.insert(tk.END, header, "header")
+        for row in payload.get("movers") or []:
+            name = (row.get("name") or row.get("symbol", ""))[:name_w]
+            price = float(row.get("price", 0))
+            pct = float(row.get("change_pct", 0))
+            sign = "+" if pct > 0 else ""
+            price_str = f"₹{price:,.2f}" if price >= 100 else f"₹{price}"
+            change_str = f"{sign}{pct:.2f}%"
+            tag = "up" if pct > 0 else ("down" if pct < 0 else "flat")
+            prefix = f"{name:<{name_w}} {price_str:>{price_w}} "
+            self.log.insert(tk.END, prefix)
+            self.log.insert(tk.END, f"{change_str:>{chg_w}}\n", tag)
+        self.log.insert(tk.END, "\n")
+        self.log.see(tk.END)
+        self.log.configure(state=tk.DISABLED)
+
     def _append(self, who: str, text: str) -> None:
         self.log.configure(state=tk.NORMAL)
         self.log.insert(tk.END, f"{who}: {text}\n")
@@ -226,6 +255,9 @@ class JarvisUI:
                 elif kind == "input":
                     state = tk.NORMAL if payload == "on" else tk.DISABLED
                     self.command_entry.configure(state=state)
+                elif kind == "movers_table":
+                    who, table_payload = payload
+                    self._append_movers_table(who, table_payload)
                 else:
                     who, text = payload.split("\x1f", 1)
                     self._append(who, text)

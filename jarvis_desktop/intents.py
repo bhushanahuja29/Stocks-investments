@@ -10,7 +10,8 @@ import requests
 from .automation import MissingLevelAutomation
 from .backend_client import BackendClient, MongoLevelClient
 from .config import CONFIG
-from .agent import KryptoAgent, format_movers_speech, is_agent_query
+from .agent import KryptoAgent, is_agent_query
+from .movers_format import format_movers_speech, movers_table_payload
 from .news_format import format_news_log, format_news_speech
 from .news_query_parser import parse_news_query
 from .pin_commands import format_pin_confirmation, parse_pin_command
@@ -192,13 +193,9 @@ class IntentRouter:
                 result = tools.execute("get_index_movers", mover_query.to_tool_args())
                 if result.get("success"):
                     spoken = format_movers_speech(result)
-                    try:
-                        trace = json.dumps(result, indent=2, default=str)[:8000]
-                    except TypeError:
-                        trace = str(result)[:8000]
                     return JarvisResponse(
                         spoken,
-                        log_detail=f"---\nTool trace:\n[tool get_index_movers] {trace}",
+                        payload=movers_table_payload(result),
                     )
             except requests.RequestException:
                 pass

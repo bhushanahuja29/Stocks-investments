@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import threading
-import webbrowser
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -12,7 +11,7 @@ from .pin_alert_sound import play_price_alert
 from .pin_market_hours import pin_session_status, should_poll_pin
 from .pin_store import PinnedEntry, load_pins, save_pins
 from .quote_service import fetch_market_quote, normalize_market_type
-from .tradingview_urls import tradingview_chart_url
+from .tradingview_multi_window import open_tradingview_quad
 
 _BG = "#02030A"
 _ACCENT = "#56C9FF"
@@ -697,8 +696,32 @@ class _SinglePinWidget:
         self._update_session_status()
 
     def _open_tradingview(self) -> None:
-        url = tradingview_chart_url(self._state.symbol, self._state.market_type)
-        webbrowser.open(url)
+        sym = self._state.symbol
+        mtype = self._state.market_type
+
+        def _set_status(text: str, fg: str = "#6a8aaa") -> None:
+            if self._session_status_label and self._expanded:
+                self._session_status_label.config(text=text, fg=fg)
+                self._session_status_label.pack(
+                    fill="x", pady=(4, 0), before=self._btn_row
+                )
+
+        _set_status("Opening 4 TradingView charts…", "#FFB347")
+
+        def worker() -> None:
+            try:
+                open_tradingview_quad(sym, mtype)
+                msg = "4 charts ready (15m · 1h · 1W · 1D)"
+                color = "#84FFC9"
+            except Exception as exc:
+                msg = str(exc)[:120]
+                color = "#FF6B8A"
+
+            if self._parent.winfo_exists():
+                self._parent.after(0, lambda: _set_status(msg, color))
+                self._parent.after(8000, lambda: self._parent.after(0, self._update_session_status))
+
+        threading.Thread(target=worker, daemon=True).start()
 
 
 class PinSidePanel:

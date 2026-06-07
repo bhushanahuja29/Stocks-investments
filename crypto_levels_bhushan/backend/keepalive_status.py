@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 KEEPALIVE_SETTINGS_KEY = "keepalive_status"
-DEFAULT_INTERVAL_SECONDS = 840
+DEFAULT_INTERVAL_SECONDS = 600
 HEALTH_GRACE_SECONDS = 300
 
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { wakeBackend } from '../utils/wakeBackend';
 import './Monitor.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -9,6 +10,7 @@ function Monitor({ onNavbarRefresh }) {
   const [selectedScrip, setSelectedScrip] = useState(null);
   const [prices, setPrices] = useState({}); // Store prices for all scrips
   const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState('Loading trading data...');
   const [lastUpdate, setLastUpdate] = useState({});
   const [toast, setToast] = useState(null);
   const [notificationPermission, setNotificationPermission] = useState('default');
@@ -70,7 +72,10 @@ function Monitor({ onNavbarRefresh }) {
 
   const loadScrips = useCallback(async () => {
     setLoading(true);
+    setLoadingMessage('Waking server… first load may take up to 60s');
     try {
+      await wakeBackend(API_URL);
+      setLoadingMessage('Loading trading data...');
       const response = await axios.get(`${API_URL}/api/scrips`);
       if (response.data.success) {
         setScrips(response.data.scrips);
@@ -299,7 +304,7 @@ function Monitor({ onNavbarRefresh }) {
     return (
       <div className="monitor">
         <div className="container">
-          <div className="loading">Loading scrips...</div>
+          <div className="loading">{loadingMessage}</div>
         </div>
       </div>
     );

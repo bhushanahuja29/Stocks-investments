@@ -35,6 +35,22 @@ class JarvisConfig:
     jarvis_sync_key: str = os.getenv(
         "JARVIS_SYNC_KEY", "delta-bhushan-jarvis-sync-2026"
     )
+    tradingview_chrome_user_data: str = os.getenv(
+        "TRADINGVIEW_CHROME_USER_DATA",
+        os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data"),
+    )
+    tradingview_chrome_profile_1: str = os.getenv(
+        "TRADINGVIEW_CHROME_PROFILE_1", "Profile 8"
+    )
+    tradingview_chrome_profile_2: str = os.getenv(
+        "TRADINGVIEW_CHROME_PROFILE_2", "Profile 9"
+    )
+    tradingview_chart_load_sec: float = float(
+        os.getenv("TRADINGVIEW_CHART_LOAD_SEC", "8")
+    )
+    tradingview_chart_layout_id: str = os.getenv(
+        "TRADINGVIEW_CHART_LAYOUT_ID", "Vhwft9jB"
+    )
 
 
 CONFIG = JarvisConfig()

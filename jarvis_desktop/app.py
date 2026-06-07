@@ -136,10 +136,15 @@ class JarvisApp:
             self._update_status("thinking", activity, loading=True)
             self.ui.flush()
             reply = self.router.handle(text)
-            if reply.log_detail:
-                self.ui.append("Krypto", reply.log_detail)
+            if reply.payload.get("view") == "movers_table":
+                self.ui.append_movers_table("Krypto", reply.payload)
                 self.ui.flush()
-            self._present_text("Krypto", reply.text)
+                self._present_text("Krypto", reply.text)
+            else:
+                if reply.log_detail:
+                    self.ui.append("Krypto", reply.log_detail)
+                    self.ui.flush()
+                self._present_text("Krypto", reply.text)
             self._update_status("idle", "Ready — voice, Hey Krypto button, or type below", loading=False)
         except Exception as exc:
             self._present_text("System", f"Something went wrong: {exc}", speak=False)

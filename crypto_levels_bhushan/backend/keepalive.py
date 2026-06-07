@@ -1,6 +1,6 @@
 """
 Keep-alive service for Render deployment.
-Self-pings GET /api/keepalive every 14 minutes to prevent free-tier spin-down.
+Self-pings GET /api/keepalive every 10 minutes to prevent free-tier spin-down.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ def _backend_url() -> str:
 
 
 def _ping_interval() -> int:
-    return int(os.getenv("KEEPALIVE_INTERVAL", "840"))
+    return int(os.getenv("KEEPALIVE_INTERVAL", "600"))
 
 
 def ping_self() -> bool:
@@ -44,7 +44,7 @@ def _keepalive_loop() -> None:
     interval = _ping_interval()
     print(f"[KEEPALIVE] Backend URL: {_backend_url()}")
     print(f"[KEEPALIVE] Ping interval: {interval}s ({interval / 60:.1f} min)")
-    time.sleep(120)
+    time.sleep(30)
     while not _stop_event.is_set():
         ping_self()
         if _stop_event.wait(interval):

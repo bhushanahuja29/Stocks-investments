@@ -11,6 +11,7 @@ import requests
 from .config import CONFIG
 from .llm import OllamaClient, message_content, message_tool_calls, parse_react_tool_call
 from .models import JarvisResponse
+from .movers_format import format_movers_speech, movers_table_payload
 from .news_format import format_news_log, format_news_speech
 from .tools.market_data import TOOL_DEFINITIONS, MarketTools
 
@@ -153,43 +154,6 @@ def _movers_payload(result: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
-def format_movers_speech(payload: dict[str, Any], *, label: str | None = None) -> str:
-    """List every mover from tool data (gainers and losers) — do not rely on LLM to enumerate."""
-    movers = _clean_movers(payload.get("movers") or [])
-    min_pct = payload.get("min_pct", 2)
-    period = payload.get("period", "daily")
-    direction = payload.get("direction", "any")
-    label = label or payload.get("index_label") or "Nifty 50"
-    count = len(movers)
-
-    dir_note = ""
-    if direction == "up":
-        dir_note = " (gainers only)"
-    elif direction == "down":
-        dir_note = " (losers only)"
-
-    if count == 0:
-        return f"No {label} stocks match {min_pct}% move filter ({period}{dir_note})."
-
-    gainers = [m for m in movers if float(m["change_pct"]) > 0]
-    losers = [m for m in movers if float(m["change_pct"]) < 0]
-
-    sort_note = payload.get("sort", "desc")
-    lines = [
-        f"{count} {label} stocks match {min_pct}% move ({period}{dir_note}), sorted {sort_note}:",
-        f"{len(gainers)} up and {len(losers)} down.",
-    ]
-    for idx, row in enumerate(movers, start=1):
-        sym = row["symbol"]
-        name = row.get("name") or sym
-        price = row["price"]
-        pct = row["change_pct"]
-        word = "up" if float(pct) > 0 else "down"
-        lines.append(f"{idx}. {sym} ({name}): ₹{price}, {word} {abs(pct)}%.")
-
-    return " ".join(lines)
-
-
 @dataclass
 class KryptoAgent:
     llm: OllamaClient
@@ -216,15 +180,19 @@ class KryptoAgent:
             if payload is None:
                 return None
             spoken = format_movers_speech(payload)
-            detail = "---\nTool trace:\n" + "\n".join(log_parts)
-            return JarvisResponse(spoken, log_detail=detail)
+            return JarvisResponse(
+                spoken,
+                payload=movers_table_payload(payload),
+            )
         if tool_name == "get_watchlist_crypto_movers":
             payload = _movers_payload(result)
             if payload is None:
                 return None
             spoken = format_movers_speech(payload, label="watchlist crypto")
-            detail = "---\nTool trace:\n" + "\n".join(log_parts)
-            return JarvisResponse(spoken, log_detail=detail)
+            return JarvisResponse(
+                spoken,
+                payload=movers_table_payload(payload, label="watchlist crypto"),
+            )
         return None
 
     def _news_response_if_ready(

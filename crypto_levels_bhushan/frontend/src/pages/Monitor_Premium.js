@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { wakeBackend } from '../utils/wakeBackend';
 import './Monitor_Premium.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -9,6 +10,7 @@ function MonitorPremium({ onNavbarRefresh }) {
   const [selectedScrip, setSelectedScrip] = useState(null);
   const [prices, setPrices] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadingMessage, setLoadingMessage] = useState('Loading trading data...');
   const [lastUpdate, setLastUpdate] = useState({});
   const [toast, setToast] = useState(null);
   const [notificationPermission, setNotificationPermission] = useState('default');
@@ -91,7 +93,10 @@ function MonitorPremium({ onNavbarRefresh }) {
 
   const loadScrips = useCallback(async () => {
     setLoading(true);
+    setLoadingMessage('Waking server… first load may take up to 60s');
     try {
+      await wakeBackend(API_URL);
+      setLoadingMessage('Loading trading data...');
       const response = await axios.get(`${API_URL}/api/scrips`);
       if (response.data.success) {
         setScrips(response.data.scrips);
@@ -320,7 +325,7 @@ function MonitorPremium({ onNavbarRefresh }) {
     return (
       <div className="monitor">
         <div className="container">
-          <div className="loading">Loading trading data...</div>
+          <div className="loading">{loadingMessage}</div>
         </div>
       </div>
     );

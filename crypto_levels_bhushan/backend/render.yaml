@@ -15,4 +15,4 @@ services:
       - key: COLLECTION_NAME
         value: monitored_scrips
       - key: KEEPALIVE_INTERVAL
-        value: "840"
+        value: "600"
