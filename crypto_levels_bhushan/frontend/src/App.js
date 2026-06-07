@@ -6,6 +6,7 @@ import MonitorPremium from './pages/Monitor_Premium';
 import Login from './pages/Login';
 import AdminUsers from './pages/AdminUsers';
 import PinAlerts from './pages/PinAlerts';
+import TradingViewAlerts from './pages/TradingViewAlerts';
 import Navbar from './components/Navbar';
 import PwaShell from './components/PwaShell';
 import { ensurePushSubscription } from './utils/pushNotifications';
@@ -102,6 +103,7 @@ function App() {
           <Route path="/monitor" element={<MonitorPremium onNavbarRefresh={triggerNavbarRefresh} />} />
           <Route path="/monitor-classic" element={<Monitor onNavbarRefresh={triggerNavbarRefresh} />} />
           <Route path="/pins" element={<PinAlerts user={user} />} />
+          <Route path="/alerts" element={<TradingViewAlerts />} />
           
           {/* Default redirect based on role */}
           <Route 

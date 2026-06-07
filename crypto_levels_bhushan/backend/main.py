@@ -3,7 +3,7 @@ FastAPI Backend for Crypto Levels Bhushan
 Provides APIs for support zone finding and monitoring
 """
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -56,6 +56,7 @@ async def _app_lifespan(application: FastAPI):
         from push_notifications import VAPID_PRIVATE_KEY, run_morning_nifty_push
         from pin_alerts import ensure_pin_indexes
         from pin_alert_monitor import run_pin_alert_monitor
+        from tradingview_webhook import ensure_tv_alert_indexes
     except ImportError as exc:
         print(f"[SCHEDULER] APScheduler or pin modules missing — {exc}")
         yield
@@ -64,6 +65,7 @@ async def _app_lifespan(application: FastAPI):
     try:
         coll = get_mongo_connection()
         ensure_pin_indexes(coll.database)
+        ensure_tv_alert_indexes(coll.database)
         print("[PIN ALERTS] MongoDB indexes ready")
     except Exception as exc:
         print(f"[PIN ALERTS] Index setup failed: {exc}")
@@ -924,6 +926,8 @@ def health_check():
                 "/api/push/test",
                 "/api/pins",
                 "/api/pins/sync",
+                "/api/webhooks/tradingview",
+                "/api/alerts/tradingview",
                 "/api/keepalive",
                 "/api/keepalive/status",
             ],
@@ -1304,6 +1308,54 @@ def sync_pins_route(
         entries = [p.model_dump() for p in request.pins]
         result = sync_pins(coll.database, entries, created_by="jarvis")
         return {"success": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/webhooks/tradingview")
+async def tradingview_webhook(
+    request: Request,
+    secret: Optional[str] = None,
+):
+    """Receive TradingView alert webhook (query param secret)."""
+    from tradingview_webhook import (
+        handle_tradingview_webhook,
+        parse_payload,
+        verify_tradingview_secret,
+    )
+
+    if not verify_tradingview_secret(secret):
+        raise HTTPException(status_code=401, detail="Invalid webhook secret")
+
+    body = await request.body()
+    content_type = request.headers.get("content-type")
+
+    try:
+        parsed = parse_payload(body, content_type)
+        if not parsed.get("symbol") and not parsed.get("raw"):
+            return {"success": False, "error": "Empty payload"}
+
+        coll = get_mongo_connection()
+        result = handle_tradingview_webhook(coll.database, parsed)
+        return result
+    except Exception as e:
+        print(f"[TV WEBHOOK ERROR] {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/alerts/tradingview")
+def list_tradingview_alerts(
+    authorization: Optional[str] = Header(None),
+    limit: int = 50,
+):
+    """List recent TradingView webhook alerts (login required)."""
+    _require_login(authorization)
+    try:
+        from tradingview_webhook import list_alerts
+
+        coll = get_mongo_connection()
+        alerts = list_alerts(coll.database, limit=limit)
+        return {"success": True, "alerts": alerts, "count": len(alerts)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

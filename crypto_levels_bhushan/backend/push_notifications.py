@@ -202,6 +202,34 @@ def broadcast_pin_alert_push(
     )
 
 
+def broadcast_tradingview_alert_push(
+    db,
+    *,
+    symbol: str,
+    action: str | None,
+    price: float | None,
+    message: str | None,
+    market_type: str = "crypto",
+) -> dict[str, int]:
+    """Broadcast TradingView webhook alert to all push subscriptions."""
+    title = f"TV Alert — {symbol}"
+    if message:
+        body = message
+    elif price is not None:
+        body = f"{action or 'Alert'} @ {price:,.2f}"
+    else:
+        body = action or "TradingView alert"
+    tag = f"tv-{symbol}"
+    return broadcast_push(
+        db,
+        title,
+        body,
+        url="/alerts",
+        tag=tag,
+        event="tradingview_alert",
+    )
+
+
 def build_morning_nifty_message() -> tuple[str, str, dict[str, Any]]:
     """Title, body, full payload for morning push."""
     payload = compute_index_movers(

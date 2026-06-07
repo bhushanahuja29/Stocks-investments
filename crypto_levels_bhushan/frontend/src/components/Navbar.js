@@ -101,6 +101,7 @@ function Navbar({ user, onLogout, refreshTrigger }) {
   const navItems = [
     { to: '/monitor', label: 'Monitor', icon: '📊' },
     { to: '/pins', label: 'Pins', icon: '📌' },
+    { to: '/alerts', label: 'TV Alerts', icon: '📡' },
     { to: '/zone-finder', label: 'Zones', icon: '🔍' },
   ];
   if (user.role === 'admin') {

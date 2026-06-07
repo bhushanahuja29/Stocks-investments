@@ -1,15 +1,17 @@
-/* Crypto Levels — Web Push service worker v3 */
-const SW_VERSION = 'v3';
+/* Crypto Levels — Web Push service worker v4 */
+const SW_VERSION = 'v4';
 
 const ROUTE_BY_EVENT = {
   morning_nifty: '/monitor',
   pin_alert: '/pins',
+  tradingview_alert: '/alerts',
   test: '/pins',
 };
 
 const TITLE_BY_EVENT = {
   pin_alert: 'Pin alert',
   morning_nifty: 'Morning alert',
+  tradingview_alert: 'TradingView alert',
   test: 'Test notification',
 };
 
