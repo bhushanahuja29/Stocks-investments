@@ -926,6 +926,7 @@ def health_check():
                 "/api/push/test",
                 "/api/pins",
                 "/api/pins/sync",
+                "/api/pins/{symbol}/stop-alert",
                 "/api/webhooks/tradingview",
                 "/api/alerts/tradingview",
                 "/api/keepalive",
@@ -1289,6 +1290,30 @@ def delete_pin_route(
         coll = get_mongo_connection()
         removed = delete_pin(coll.database, symbol)
         return {"success": True, "removed": removed}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/pins/{symbol}/stop-alert")
+def stop_pin_alert_route(
+    symbol: str,
+    authorization: Optional[str] = Header(None),
+    x_jarvis_key: Optional[str] = Header(None),
+):
+    """Silence repeating pin alerts until price re-arms."""
+    from pin_alerts import stop_pin_alert, verify_jarvis_key
+
+    if not verify_jarvis_key(x_jarvis_key):
+        _require_login(authorization)
+
+    try:
+        coll = get_mongo_connection()
+        stopped = stop_pin_alert(coll.database, symbol)
+        if not stopped:
+            raise HTTPException(status_code=404, detail="Pin not found")
+        return {"success": True, "symbol": symbol.upper().strip()}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

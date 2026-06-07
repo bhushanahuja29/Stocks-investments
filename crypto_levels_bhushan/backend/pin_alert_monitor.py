@@ -10,6 +10,8 @@ from pin_alerts import (
     PIN_ALERTS_COLLECTION,
     has_notification_dedupe,
     log_notification,
+    set_pin_ringing,
+    stop_pin_alert,
 )
 from pin_market_hours import should_poll_pin
 
@@ -20,8 +22,30 @@ def _today_key() -> str:
     return datetime.now(IST).strftime("%Y-%m-%d")
 
 
+def _minute_key() -> str:
+    return datetime.now(IST).strftime("%Y-%m-%dT%H:%M")
+
+
 def _dedupe_key(symbol: str, direction: str, alert_price: float) -> str:
     return f"pin_alert:{symbol}:{direction}:{alert_price:g}:{_today_key()}"
+
+
+def _repeat_dedupe_key(symbol: str, direction: str) -> str:
+    return f"pin_alert_repeat:{symbol}:{direction}:{_minute_key()}"
+
+
+def _breach_state(
+    doc: dict[str, Any],
+    ltp: float,
+) -> tuple[bool, str | None, float | None]:
+    above = doc.get("alert_above")
+    below = doc.get("alert_below")
+    current = float(ltp)
+    if above is not None and current >= float(above):
+        return True, "above", float(above)
+    if below is not None and current <= float(below):
+        return True, "below", float(below)
+    return False, None, None
 
 
 def _initial_armed_state(
@@ -62,6 +86,7 @@ def _dispatch_pin_alerts(
     mtype: str,
     ltp_f: float,
     fired: list[dict[str, Any]],
+    is_repeat: bool = False,
 ) -> tuple[int, int]:
     from push_notifications import broadcast_pin_alert_push
 
@@ -70,9 +95,16 @@ def _dispatch_pin_alerts(
     for alert in fired:
         direction = alert["direction"]
         alert_price = alert["alert_price"]
-        dedupe_key = _dedupe_key(sym, direction, alert_price)
+        dedupe_key = (
+            _repeat_dedupe_key(sym, direction)
+            if is_repeat
+            else _dedupe_key(sym, direction, alert_price)
+        )
         if has_notification_dedupe(db, dedupe_key):
             continue
+
+        if not is_repeat:
+            set_pin_ringing(db, sym, direction=direction, trigger_price=alert_price)
 
         crosses += 1
         stats = broadcast_pin_alert_push(
@@ -89,10 +121,37 @@ def _dispatch_pin_alerts(
             dedupe_key=dedupe_key,
             event="pin_alert",
             symbol=sym,
-                    title=f"Pin alert — {sym}",
+            title=f"Pin alert — {sym}",
             body=f"{sym} crossed {direction} {alert_price:,.2f}",
         )
     return crosses, pushes_sent
+
+
+def _dispatch_ringing_repeat(
+    db,
+    coll,
+    doc: dict[str, Any],
+    *,
+    sym: str,
+    mtype: str,
+    ltp_f: float,
+) -> tuple[int, int]:
+    if not doc.get("alert_ringing"):
+        return 0, 0
+
+    breached, direction, alert_price = _breach_state(doc, ltp_f)
+    if not breached or direction is None or alert_price is None:
+        stop_pin_alert(db, sym)
+        return 0, 0
+
+    return _dispatch_pin_alerts(
+        db,
+        sym=sym,
+        mtype=mtype,
+        ltp_f=ltp_f,
+        fired=[{"direction": direction, "alert_price": alert_price}],
+        is_repeat=True,
+    )
 
 
 def check_price_cross(
@@ -141,6 +200,7 @@ def run_pin_alert_monitor(db) -> dict[str, Any]:
     skipped_hours = 0
     crosses = 0
     pushes_sent = 0
+    repeats = 0
     errors = 0
 
     for doc in pins:
@@ -198,6 +258,14 @@ def run_pin_alert_monitor(db) -> dict[str, Any]:
             crosses += c
             pushes_sent += p
 
+            if not fired:
+                doc = coll.find_one({"_id": doc["_id"]}) or doc
+                rc, rp = _dispatch_ringing_repeat(
+                    db, coll, doc, sym=sym, mtype=mtype, ltp_f=ltp_f
+                )
+                repeats += rc
+                pushes_sent += rp
+
         except Exception:
             errors += 1
 
@@ -206,6 +274,7 @@ def run_pin_alert_monitor(db) -> dict[str, Any]:
         "checked": checked,
         "skipped_hours": skipped_hours,
         "crosses": crosses,
+        "repeats": repeats,
         "pushes_sent": pushes_sent,
         "errors": errors,
     }

@@ -50,6 +50,7 @@ class _SinglePinWidget:
         on_unpin: Callable[[str], None],
         on_layout: Callable[[], None],
         on_alerts_changed: Callable[[str], None],
+        on_stop_alert: Callable[[str], None] | None = None,
     ) -> None:
         self._parent = parent
         self._state = state
@@ -57,6 +58,7 @@ class _SinglePinWidget:
         self._on_unpin = on_unpin
         self._on_layout = on_layout
         self._on_alerts_changed = on_alerts_changed
+        self._on_stop_alert = on_stop_alert
         self._win: tk.Toplevel | None = None
         self._expanded = False
         self._refresh_after: str | None = None
@@ -67,6 +69,7 @@ class _SinglePinWidget:
         self._above_armed = True
         self._below_armed = True
         self._had_first_quote = False
+        self._alert_ringing = False
 
         self._tab_label: tk.Label | None = None
         self._detail_frame: tk.Frame | None = None
@@ -79,6 +82,7 @@ class _SinglePinWidget:
         self._session_status_label: tk.Label | None = None
         self._alert_above_var: tk.StringVar | None = None
         self._alert_below_var: tk.StringVar | None = None
+        self._stop_alert_btn: tk.Button | None = None
 
         self._build()
 
@@ -273,6 +277,21 @@ class _SinglePinWidget:
         )
         self._alert_status_label.pack(fill="x", pady=(2, 0))
 
+        self._stop_alert_btn = tk.Button(
+            alert_frame,
+            text="Stop alert",
+            command=self._stop_alert,
+            bg="#8b2030",
+            fg="#FFFFFF",
+            activebackground="#a02838",
+            activeforeground="#FFFFFF",
+            relief="flat",
+            font=("Segoe UI", 9, "bold"),
+            padx=8,
+            pady=4,
+            cursor="hand2",
+        )
+
         self._session_status_label = tk.Label(
             self._detail_frame,
             text="",
@@ -369,13 +388,61 @@ class _SinglePinWidget:
         if changed:
             self._had_first_quote = False
             self._prev_ltp = None
+            self._alert_ringing = False
+            self._update_ringing_ui()
 
         if self._alert_status_label:
             self._alert_status_label.config(text=self._alert_status_text())
         if fired_now:
-            play_price_alert()
+            self._start_ringing()
         if changed:
             self._on_alerts_changed(self._state.symbol)
+
+    def _is_breached(self, ltp: float) -> bool:
+        above = self._state.alert_above
+        below = self._state.alert_below
+        if above is not None and ltp >= above:
+            return True
+        if below is not None and ltp <= below:
+            return True
+        return False
+
+    def _start_ringing(self) -> None:
+        self._alert_ringing = True
+        play_price_alert()
+        self._update_ringing_ui()
+
+    def _stop_alert(self) -> None:
+        self._alert_ringing = False
+        self._update_ringing_ui()
+        if self._on_stop_alert:
+            sym = self._state.symbol
+
+            def _worker() -> None:
+                try:
+                    self._on_stop_alert(sym)
+                except Exception:
+                    pass
+
+            threading.Thread(target=_worker, daemon=True).start()
+
+    def _update_ringing_ui(self) -> None:
+        if not self._stop_alert_btn:
+            return
+        if self._alert_ringing:
+            self._stop_alert_btn.pack(fill="x", pady=(6, 0))
+            if self._alert_status_label:
+                self._alert_status_label.config(
+                    text="Alert ringing — repeats until you stop",
+                    fg="#FF6B6B",
+                )
+        else:
+            self._stop_alert_btn.pack_forget()
+            if self._alert_status_label:
+                self._alert_status_label.config(
+                    text=self._alert_status_text(),
+                    fg="#FFB347",
+                )
 
     def _alert_status_text(self) -> str:
         parts: list[str] = []
@@ -518,13 +585,17 @@ class _SinglePinWidget:
         if not should_poll_pin(self._state.symbol, self._state.market_type):
             return
 
+        current = float(ltp)
+        if self._alert_ringing and not self._is_breached(current):
+            self._alert_ringing = False
+            self._update_ringing_ui()
+
         above = self._state.alert_above
         below = self._state.alert_below
         prev = self._prev_ltp
 
         if not self._had_first_quote:
             self._had_first_quote = True
-            current = float(ltp)
             self._prev_ltp = current
             fired = False
             if above is not None:
@@ -540,10 +611,11 @@ class _SinglePinWidget:
                 else:
                     self._below_armed = True
             if fired:
+                self._start_ringing()
+            elif self._alert_ringing:
                 play_price_alert()
             return
 
-        current = float(ltp)
         fired = False
 
         if above is not None and self._above_armed and prev is not None:
@@ -562,6 +634,8 @@ class _SinglePinWidget:
 
         self._prev_ltp = current
         if fired:
+            self._start_ringing()
+        elif self._alert_ringing:
             play_price_alert()
 
     def _apply_quote(self, quote: dict[str, Any]) -> None:
@@ -635,10 +709,12 @@ class PinSidePanel:
         parent: tk.Misc,
         fetch_quote: Callable[[str, str], dict[str, Any]],
         sync_pins: Callable[[list[dict[str, Any]]], None] | None = None,
+        stop_alert: Callable[[str], None] | None = None,
     ) -> None:
         self._parent = parent
         self._fetch_quote = fetch_quote
         self._sync_pins = sync_pins
+        self._stop_alert = stop_alert
         self._widgets: dict[str, _SinglePinWidget] = {}
         self._order: list[str] = []
 
@@ -689,6 +765,7 @@ class PinSidePanel:
             on_unpin=self.unpin,
             on_layout=self._layout_all,
             on_alerts_changed=lambda _s: self._persist(),
+            on_stop_alert=self._stop_alert,
         )
         self._widgets[sym] = widget
         self._order.append(sym)
@@ -804,4 +881,7 @@ def create_pin_panel(parent: tk.Misc, backend: Any) -> PinSidePanel:
     def sync(entries: list[dict[str, Any]]) -> None:
         client.sync_pins(entries)
 
-    return PinSidePanel(parent, fetch_quote=fetch, sync_pins=sync)
+    def stop_alert(symbol: str) -> None:
+        client.stop_pin_alert(symbol)
+
+    return PinSidePanel(parent, fetch_quote=fetch, sync_pins=sync, stop_alert=stop_alert)

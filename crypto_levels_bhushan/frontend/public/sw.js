@@ -1,5 +1,5 @@
-/* Crypto Levels — Web Push service worker v4 */
-const SW_VERSION = 'v4';
+/* Crypto Levels — Web Push service worker v5 */
+const SW_VERSION = 'v5';
 
 const ROUTE_BY_EVENT = {
   morning_nifty: '/monitor',
@@ -45,9 +45,18 @@ self.addEventListener('push', (event) => {
     data: { url, event: eventType },
     tag,
     renotify: true,
+    silent: false,
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  const notifyClients = self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    clientList.forEach((client) => {
+      client.postMessage({ type: 'play_alert_sound', event: eventType });
+    });
+  });
+
+  event.waitUntil(
+    Promise.all([self.registration.showNotification(title, options), notifyClients])
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {

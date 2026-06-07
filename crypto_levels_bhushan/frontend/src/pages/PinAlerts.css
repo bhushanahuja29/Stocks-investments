@@ -2,7 +2,7 @@
   min-height: calc(100dvh - 56px);
   background: #02030a;
   color: #e8f4ff;
-  padding: 16px 12px calc(24px + env(safe-area-inset-bottom, 0));
+  padding: 16px 12px calc(80px + env(safe-area-inset-bottom, 0));
 }
 
 .pin-alerts-container {

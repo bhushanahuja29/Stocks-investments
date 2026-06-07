@@ -1,0 +1,120 @@
+.pin-alert-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9000;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0));
+  background: linear-gradient(180deg, rgba(255, 80, 80, 0.15), rgba(40, 8, 16, 0.98));
+  border-top: 2px solid #ff6b6b;
+  box-shadow: 0 -4px 24px rgba(255, 80, 80, 0.25);
+  animation: pin-banner-pulse 2s ease-in-out infinite;
+}
+
+@keyframes pin-banner-pulse {
+  0%, 100% { border-top-color: #ff6b6b; }
+  50% { border-top-color: #ffb347; }
+}
+
+.pin-alert-banner-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.pin-alert-banner-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.pin-alert-banner-text {
+  flex: 1;
+  min-width: 140px;
+  color: #ffe8e8;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.pin-alert-banner-text strong {
+  display: block;
+  color: #ff8a8a;
+  margin-bottom: 2px;
+}
+
+.pin-alert-banner-item {
+  display: inline-block;
+  margin-right: 8px;
+  color: #fff;
+}
+
+.pin-alert-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pin-stop-alert-btn {
+  background: #ff4444;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pin-stop-alert-btn:hover:not(:disabled) {
+  background: #ff2222;
+}
+
+.pin-stop-alert-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pin-stop-all-btn {
+  background: #8b2030;
+}
+
+.pin-card.ringing {
+  border-color: #ff6b6b;
+  box-shadow: 0 0 12px rgba(255, 80, 80, 0.35);
+}
+
+.pin-ringing-badge {
+  display: inline-block;
+  background: rgba(255, 80, 80, 0.2);
+  color: #ff8a8a;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  animation: pin-banner-pulse 2s ease-in-out infinite;
+}
+
+.pin-stop-alert-btn-card {
+  width: 100%;
+  margin-top: 10px;
+  background: #ff4444;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pin-stop-alert-btn-card:hover:not(:disabled) {
+  background: #ff2222;
+}
+
+.pin-stop-alert-btn-card:disabled {
+  opacity: 0.6;
+}

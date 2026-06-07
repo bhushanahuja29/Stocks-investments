@@ -170,6 +170,19 @@ class BackendClient:
         response.raise_for_status()
         return response.json()
 
+    def stop_pin_alert(self, symbol: str) -> dict[str, Any]:
+        """Silence repeating pin alerts on the server."""
+        headers: dict[str, str] = {}
+        if CONFIG.jarvis_sync_key:
+            headers["X-Jarvis-Key"] = CONFIG.jarvis_sync_key
+        response = requests.post(
+            self._url(f"/api/pins/{symbol.upper().strip()}/stop-alert"),
+            headers=headers,
+            timeout=self.timeout_seconds,
+        )
+        response.raise_for_status()
+        return response.json()
+
     def get_watchlist_movers(self, min_pct: float, market_type: str | None = None) -> dict[str, Any]:
         params: dict[str, Any] = {"min_pct": min_pct}
         if market_type:

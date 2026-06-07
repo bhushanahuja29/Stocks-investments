@@ -19,9 +19,12 @@ def play_price_alert() -> None:
                 import winsound
 
                 winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
-                winsound.Beep(1200, 180)
-                winsound.Beep(900, 220)
+                winsound.PlaySound("SystemExclamation", winsound.SND_ALIAS | winsound.SND_ASYNC)
+                winsound.Beep(1200, 200)
+                winsound.Beep(900, 250)
+                winsound.Beep(1100, 200)
             else:
+                print("\a", end="", flush=True)
                 print("\a", end="", flush=True)
         except Exception:
             try:

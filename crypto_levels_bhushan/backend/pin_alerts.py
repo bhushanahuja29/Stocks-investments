@@ -82,6 +82,9 @@ def upsert_pin(
                 "above_armed": True,
                 "below_armed": True,
                 "had_first_quote": False,
+                "alert_ringing": False,
+                "alert_direction": None,
+                "alert_trigger_price": None,
                 "created_at": now,
             }
         )
@@ -94,6 +97,9 @@ def upsert_pin(
         update["below_armed"] = True
         update["had_first_quote"] = False
         update["last_ltp"] = None
+        update["alert_ringing"] = False
+        update["alert_direction"] = None
+        update["alert_trigger_price"] = None
 
     coll.update_one({"symbol": sym}, {"$set": update}, upsert=True)
     doc = coll.find_one({"symbol": sym})
@@ -157,6 +163,9 @@ def _serialize_pin(doc: dict[str, Any] | None) -> dict[str, Any] | None:
         "polling_active": should_poll_pin(
             doc.get("symbol", ""), doc.get("market_type", "crypto")
         ),
+        "alert_ringing": bool(doc.get("alert_ringing")),
+        "alert_direction": doc.get("alert_direction"),
+        "alert_trigger_price": doc.get("alert_trigger_price"),
         "updated_at": doc.get("updated_at").isoformat() if doc.get("updated_at") else None,
         "created_by": doc.get("created_by"),
     }
@@ -181,6 +190,45 @@ def list_pins(db, *, attach_quotes: bool = True) -> list[dict[str, Any]]:
         result.append(row)
 
     return result
+
+
+def stop_pin_alert(db, symbol: str) -> bool:
+    """Silence repeating alerts until price re-arms or thresholds change."""
+    sym = _normalize_symbol(symbol)
+    coll = db[PIN_ALERTS_COLLECTION]
+    result = coll.update_one(
+        {"symbol": sym},
+        {
+            "$set": {
+                "alert_ringing": False,
+                "alert_direction": None,
+                "alert_trigger_price": None,
+                "updated_at": datetime.utcnow(),
+            }
+        },
+    )
+    return result.matched_count > 0
+
+
+def set_pin_ringing(
+    db,
+    symbol: str,
+    *,
+    direction: str,
+    trigger_price: float,
+) -> None:
+    sym = _normalize_symbol(symbol)
+    db[PIN_ALERTS_COLLECTION].update_one(
+        {"symbol": sym},
+        {
+            "$set": {
+                "alert_ringing": True,
+                "alert_direction": direction,
+                "alert_trigger_price": trigger_price,
+                "updated_at": datetime.utcnow(),
+            }
+        },
+    )
 
 
 def has_notification_dedupe(db, dedupe_key: str) -> bool:

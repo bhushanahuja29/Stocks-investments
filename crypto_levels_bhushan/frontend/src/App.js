@@ -9,7 +9,9 @@ import PinAlerts from './pages/PinAlerts';
 import TradingViewAlerts from './pages/TradingViewAlerts';
 import Navbar from './components/Navbar';
 import PwaShell from './components/PwaShell';
+import PinAlertSoundWatcher from './components/PinAlertSoundWatcher';
 import { ensurePushSubscription } from './utils/pushNotifications';
+import { registerAlertSoundListener, unlockAlertSound } from './utils/alertSound';
 import './App.css';
 import './App_Premium.css';
 
@@ -45,6 +47,26 @@ function App() {
     }
     ensurePushSubscription().catch(() => undefined);
     return undefined;
+  }, [user]);
+
+  // Play alert sound when a push notification arrives while the app is open
+  useEffect(() => {
+    if (!user) return undefined;
+    return registerAlertSoundListener();
+  }, [user]);
+
+  // Unlock Web Audio after first tap (browser autoplay policy)
+  useEffect(() => {
+    if (!user) return undefined;
+    const unlock = () => unlockAlertSound();
+    window.addEventListener('click', unlock, { once: true });
+    window.addEventListener('touchstart', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('touchstart', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
   }, [user]);
 
   const handleLogout = () => {
@@ -92,6 +114,7 @@ function App() {
       <div className="App">
         <Navbar user={user} onLogout={handleLogout} refreshTrigger={refreshNavbar} />
         <PwaShell />
+        <PinAlertSoundWatcher />
         <Routes>
           {/* Admin routes */}
           {user.role === 'admin' && (
