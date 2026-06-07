@@ -338,6 +338,13 @@ class _SinglePinWidget:
             return None
         return value if value > 0 else None
 
+    def _current_ltp(self) -> float | None:
+        if isinstance(self._prev_ltp, (int, float)):
+            return float(self._prev_ltp)
+        if self._last_quote and isinstance(self._last_quote.get("ltp"), (int, float)):
+            return float(self._last_quote["ltp"])
+        return None
+
     def _save_alerts(self) -> None:
         if self._alert_above_var is None or self._alert_below_var is None:
             return
@@ -348,8 +355,25 @@ class _SinglePinWidget:
         self._state.alert_below = below
         self._above_armed = True
         self._below_armed = True
+
+        current = self._current_ltp()
+        fired_now = False
+        if current is not None:
+            if above is not None and current >= above:
+                fired_now = True
+                self._above_armed = False
+            if below is not None and current <= below:
+                fired_now = True
+                self._below_armed = False
+
+        if changed:
+            self._had_first_quote = False
+            self._prev_ltp = None
+
         if self._alert_status_label:
             self._alert_status_label.config(text=self._alert_status_text())
+        if fired_now:
+            play_price_alert()
         if changed:
             self._on_alerts_changed(self._state.symbol)
 
@@ -500,11 +524,23 @@ class _SinglePinWidget:
 
         if not self._had_first_quote:
             self._had_first_quote = True
-            self._prev_ltp = float(ltp)
-            if above is not None and float(ltp) < above:
-                self._above_armed = True
-            if below is not None and float(ltp) > below:
-                self._below_armed = True
+            current = float(ltp)
+            self._prev_ltp = current
+            fired = False
+            if above is not None:
+                if current >= above:
+                    fired = True
+                    self._above_armed = False
+                else:
+                    self._above_armed = True
+            if below is not None:
+                if current <= below:
+                    fired = True
+                    self._below_armed = False
+                else:
+                    self._below_armed = True
+            if fired:
+                play_price_alert()
             return
 
         current = float(ltp)

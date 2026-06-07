@@ -20,6 +20,81 @@ def _today_key() -> str:
     return datetime.now(IST).strftime("%Y-%m-%d")
 
 
+def _dedupe_key(symbol: str, direction: str, alert_price: float) -> str:
+    return f"pin_alert:{symbol}:{direction}:{alert_price:g}:{_today_key()}"
+
+
+def _initial_armed_state(
+    doc: dict[str, Any],
+    ltp: float,
+) -> tuple[bool, bool, list[dict[str, Any]]]:
+    """First quote after pin/alert change — fire immediately if already breached."""
+    above = doc.get("alert_above")
+    below = doc.get("alert_below")
+    current = float(ltp)
+    fired: list[dict[str, Any]] = []
+    above_armed = True
+    below_armed = True
+
+    if above is not None:
+        threshold = float(above)
+        if current >= threshold:
+            fired.append({"direction": "above", "alert_price": threshold})
+            above_armed = False
+        else:
+            above_armed = True
+
+    if below is not None:
+        threshold = float(below)
+        if current <= threshold:
+            fired.append({"direction": "below", "alert_price": threshold})
+            below_armed = False
+        else:
+            below_armed = True
+
+    return above_armed, below_armed, fired
+
+
+def _dispatch_pin_alerts(
+    db,
+    *,
+    sym: str,
+    mtype: str,
+    ltp_f: float,
+    fired: list[dict[str, Any]],
+) -> tuple[int, int]:
+    from push_notifications import broadcast_pin_alert_push
+
+    crosses = 0
+    pushes_sent = 0
+    for alert in fired:
+        direction = alert["direction"]
+        alert_price = alert["alert_price"]
+        dedupe_key = _dedupe_key(sym, direction, alert_price)
+        if has_notification_dedupe(db, dedupe_key):
+            continue
+
+        crosses += 1
+        stats = broadcast_pin_alert_push(
+            db,
+            symbol=sym,
+            direction=direction,
+            ltp=ltp_f,
+            alert_price=alert_price,
+            market_type=mtype,
+        )
+        pushes_sent += stats.get("sent", 0)
+        log_notification(
+            db,
+            dedupe_key=dedupe_key,
+            event="pin_alert",
+            symbol=sym,
+                    title=f"Pin alert — {sym}",
+            body=f"{sym} crossed {direction} {alert_price:,.2f}",
+        )
+    return crosses, pushes_sent
+
+
 def check_price_cross(
     doc: dict[str, Any],
     ltp: float,
@@ -59,7 +134,6 @@ def check_price_cross(
 
 def run_pin_alert_monitor(db) -> dict[str, Any]:
     from market_helpers import get_market_quote
-    from push_notifications import broadcast_pin_alert_push
 
     coll = db[PIN_ALERTS_COLLECTION]
     pins = list(coll.find({"pinned": True}))
@@ -91,19 +165,23 @@ def run_pin_alert_monitor(db) -> dict[str, Any]:
             ltp_f = float(ltp)
 
             if not doc.get("had_first_quote"):
+                above_armed, below_armed, fired = _initial_armed_state(doc, ltp_f)
                 coll.update_one(
                     {"_id": doc["_id"]},
                     {
                         "$set": {
                             "last_ltp": ltp_f,
                             "had_first_quote": True,
-                            "above_armed": doc.get("alert_above") is None
-                            or ltp_f < float(doc["alert_above"]),
-                            "below_armed": doc.get("alert_below") is None
-                            or ltp_f > float(doc["alert_below"]),
+                            "above_armed": above_armed,
+                            "below_armed": below_armed,
                         }
                     },
                 )
+                c, p = _dispatch_pin_alerts(
+                    db, sym=sym, mtype=mtype, ltp_f=ltp_f, fired=fired
+                )
+                crosses += c
+                pushes_sent += p
                 continue
 
             fired = check_price_cross(doc, ltp_f)
@@ -114,32 +192,11 @@ def run_pin_alert_monitor(db) -> dict[str, Any]:
             }
             coll.update_one({"_id": doc["_id"]}, {"$set": update_fields})
 
-            for alert in fired:
-                direction = alert["direction"]
-                alert_price = alert["alert_price"]
-                day = _today_key()
-                dedupe_key = f"pin_alert:{sym}:{direction}:{day}"
-                if has_notification_dedupe(db, dedupe_key):
-                    continue
-
-                crosses += 1
-                stats = broadcast_pin_alert_push(
-                    db,
-                    symbol=sym,
-                    direction=direction,
-                    ltp=ltp_f,
-                    alert_price=alert_price,
-                    market_type=mtype,
-                )
-                pushes_sent += stats.get("sent", 0)
-                log_notification(
-                    db,
-                    dedupe_key=dedupe_key,
-                    event="pin_alert",
-                    symbol=sym,
-                    title=f"{sym} alert",
-                    body=f"{sym} crossed {direction} {alert_price:,.2f}",
-                )
+            c, p = _dispatch_pin_alerts(
+                db, sym=sym, mtype=mtype, ltp_f=ltp_f, fired=fired
+            )
+            crosses += c
+            pushes_sent += p
 
         except Exception:
             errors += 1

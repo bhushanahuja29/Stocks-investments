@@ -175,7 +175,7 @@ def build_pin_alert_message(
     else:
         price_s = f"{ltp:,.2f}"
         alert_s = f"{alert_price:,.2f}"
-    title = f"{symbol} — price alert"
+    title = f"Pin alert — {symbol}"
     body = f"{symbol} crossed {arrow} {alert_s} (now {price_s})"
     return title, body
 
@@ -210,7 +210,7 @@ def build_morning_nifty_message() -> tuple[str, str, dict[str, Any]]:
     movers = payload.get("movers") or []
     count = len(movers)
 
-    title = f"Nifty 50 morning — {count} mover{'s' if count != 1 else ''} ≥2%"
+    title = f"Morning alert — Nifty 50 ({count} mover{'s' if count != 1 else ''} ≥2%)"
 
     if count == 0:
         body = "No Nifty 50 stock moved 2% or more vs previous close."
@@ -239,7 +239,14 @@ def run_morning_nifty_push(db) -> dict[str, Any]:
         return {"skipped": True, "reason": "already_sent_today"}
 
     title, body, payload = build_morning_nifty_message()
-    stats = broadcast_push(db, title, body, url="/monitor")
+    stats = broadcast_push(
+        db,
+        title,
+        body,
+        url="/monitor",
+        tag="morning-nifty",
+        event="morning_nifty",
+    )
     _last_morning_push_date = today
 
     return {
@@ -250,6 +257,10 @@ def run_morning_nifty_push(db) -> dict[str, Any]:
         "movers_count": payload.get("count", 0),
         **stats,
     }
+
+
+def count_user_subscriptions(db, user_id: str) -> int:
+    return _push_coll(db).count_documents({"user_id": user_id})
 
 
 def user_id_from_token(authorization: str | None) -> str | None:

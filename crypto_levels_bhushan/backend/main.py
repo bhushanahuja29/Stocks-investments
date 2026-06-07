@@ -68,6 +68,25 @@ async def _app_lifespan(application: FastAPI):
     except Exception as exc:
         print(f"[PIN ALERTS] Index setup failed: {exc}")
 
+    def _pin_monitor_job():
+        try:
+            coll = get_mongo_connection()
+            db = coll.database
+            result = run_pin_alert_monitor(db)
+            if result.get("crosses") or result.get("errors"):
+                print(f"[PIN ALERT MONITOR] {result}")
+        except Exception as exc:
+            print(f"[PIN ALERT MONITOR ERROR] {exc}")
+
+    _push_scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
+    _push_scheduler.add_job(
+        _pin_monitor_job,
+        "interval",
+        seconds=30,
+        id="pin_alert_monitor",
+        replace_existing=True,
+    )
+
     if VAPID_PRIVATE_KEY:
         def _morning_job():
             try:
@@ -78,35 +97,18 @@ async def _app_lifespan(application: FastAPI):
             except Exception as exc:
                 print(f"[MORNING PUSH ERROR] {exc}")
 
-        def _pin_monitor_job():
-            try:
-                coll = get_mongo_connection()
-                db = coll.database
-                result = run_pin_alert_monitor(db)
-                if result.get("crosses") or result.get("errors"):
-                    print(f"[PIN ALERT MONITOR] {result}")
-            except Exception as exc:
-                print(f"[PIN ALERT MONITOR ERROR] {exc}")
-
-        _push_scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
         _push_scheduler.add_job(
             _morning_job,
             CronTrigger(hour=8, minute=0),
             id="morning_nifty_push",
             replace_existing=True,
         )
-        _push_scheduler.add_job(
-            _pin_monitor_job,
-            "interval",
-            seconds=30,
-            id="pin_alert_monitor",
-            replace_existing=True,
-        )
-        _push_scheduler.start()
         print("[MORNING PUSH] Scheduler active — 8:00 AM IST daily")
-        print("[PIN ALERTS] Price monitor active — every 30s")
     else:
-        print("[MORNING PUSH] VAPID_PRIVATE_KEY not set — scheduler disabled")
+        print("[MORNING PUSH] VAPID_PRIVATE_KEY not set — morning push disabled")
+
+    _push_scheduler.start()
+    print("[PIN ALERTS] Price monitor active — every 30s")
 
     try:
         from keepalive import start_keepalive
@@ -1063,6 +1065,22 @@ class PushUnsubscribeRequest(BaseModel):
     endpoint: str
 
 
+@app.get("/api/push/status")
+def push_status(authorization: Optional[str] = Header(None)):
+    from push_notifications import count_user_subscriptions, user_id_from_token
+
+    user_id = user_id_from_token(authorization)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Login required")
+
+    try:
+        coll = get_mongo_connection()
+        devices = count_user_subscriptions(coll.database, user_id)
+        return {"success": True, "subscribed": devices > 0, "devices": devices}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/push/vapid-public-key")
 def push_vapid_public_key():
     try:
@@ -1083,7 +1101,7 @@ def push_subscribe(
 
     user_id = user_id_from_token(authorization)
     if not user_id:
-        raise HTTPException(status_code=401, detail="Login required to enable morning alerts")
+        raise HTTPException(status_code=401, detail="Login required to enable push notifications")
 
     try:
         coll = get_mongo_connection()
@@ -1136,17 +1154,17 @@ def push_test(authorization: Optional[str] = Header(None)):
         db = coll.database
         stats = broadcast_push(
             db,
-            "Crypto Levels — test",
-            "Pin price alerts and morning Nifty alerts are enabled.",
+            "Test — push notifications",
+            "Pin alerts and 8 AM Nifty morning alerts are enabled on this device.",
             url="/pins",
             user_id=user_id,
             tag="test-push",
-            event="pin_alert",
+            event="test",
         )
         if stats["sent"] == 0:
             raise HTTPException(
                 status_code=404,
-                detail="No push subscription found. Enable morning alerts first.",
+                detail="No push subscription on server for this account. Tap Enable notifications on the Pins page.",
             )
         return {"success": True, **stats}
     except HTTPException:

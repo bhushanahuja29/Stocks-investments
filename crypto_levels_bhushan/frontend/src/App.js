@@ -8,6 +8,7 @@ import AdminUsers from './pages/AdminUsers';
 import PinAlerts from './pages/PinAlerts';
 import Navbar from './components/Navbar';
 import PwaShell from './components/PwaShell';
+import { ensurePushSubscription } from './utils/pushNotifications';
 import './App.css';
 import './App_Premium.css';
 
@@ -34,6 +35,16 @@ function App() {
     
     setLoading(false);
   }, []);
+
+  // Re-sync push subscription when PWA reopens (cold start drops server registration)
+  useEffect(() => {
+    if (!user) return undefined;
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') {
+      return undefined;
+    }
+    ensurePushSubscription().catch(() => undefined);
+    return undefined;
+  }, [user]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');

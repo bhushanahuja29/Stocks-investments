@@ -89,8 +89,11 @@ def upsert_pin(
         alert_above != existing.get("alert_above")
         or alert_below != existing.get("alert_below")
     ):
+        # Re-baseline so a new threshold fires even if price is already past it.
         update["above_armed"] = True
         update["below_armed"] = True
+        update["had_first_quote"] = False
+        update["last_ltp"] = None
 
     coll.update_one({"symbol": sym}, {"$set": update}, upsert=True)
     doc = coll.find_one({"symbol": sym})

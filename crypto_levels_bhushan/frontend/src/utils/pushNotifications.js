@@ -1,11 +1,12 @@
 /**
- * Web Push — morning Nifty + pin price alerts
+ * Web Push — pin price alerts + morning Nifty 50 alerts
  */
 
 import { iosWebPushRequiresInstall } from './pushPlatform';
 import { waitForServiceWorkerRegistration } from './pwa';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const VAPID_STORAGE_KEY = 'pushVapidPublicKey';
 
 export function isPushSupported() {
   return (
@@ -60,12 +61,12 @@ export async function sendLocalTestNotification() {
   }
   const registration = await registerServiceWorker();
   await navigator.serviceWorker.ready;
-  await registration.showNotification('Crypto Levels — test', {
-    body: 'Local test OK. Pin price alerts and 8 AM Nifty alerts will arrive here.',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
+  await registration.showNotification('Test — push notifications', {
+    body: 'Local test OK. Pin alerts and 8 AM Nifty morning alerts will arrive here.',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
     tag: 'test-local',
-    data: { url: '/pins', event: 'pin_alert' },
+    data: { url: '/pins', event: 'test' },
     renotify: true,
   });
 }
@@ -79,16 +80,7 @@ export async function fetchVapidPublicKey() {
   return data.publicKey;
 }
 
-export async function subscribeToPush() {
-  const registration = await registerServiceWorker();
-  await navigator.serviceWorker.ready;
-
-  const publicKey = await fetchVapidPublicKey();
-  const subscription = await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey),
-  });
-
+async function syncSubscriptionToServer(subscription) {
   const subJson = subscription.toJSON();
   const res = await fetch(`${API_URL}/api/push/subscribe`, {
     method: 'POST',
@@ -102,7 +94,77 @@ export async function subscribeToPush() {
   if (!res.ok) {
     throw new Error(data.detail || 'Subscribe failed');
   }
+  return data;
+}
+
+async function clearStaleSubscription(registration, publicKey) {
+  const storedKey = localStorage.getItem(VAPID_STORAGE_KEY);
+  const existing = await registration.pushManager.getSubscription();
+  if (!existing) return null;
+  if (storedKey && storedKey !== publicKey) {
+    await existing.unsubscribe();
+    return null;
+  }
+  return existing;
+}
+
+export async function subscribeToPush() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Login required to enable push notifications');
+  }
+
+  const registration = await registerServiceWorker();
+  await navigator.serviceWorker.ready;
+
+  const publicKey = await fetchVapidPublicKey();
+  let subscription = await clearStaleSubscription(registration, publicKey);
+
+  if (!subscription) {
+    try {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    } catch (err) {
+      const stale = await registration.pushManager.getSubscription();
+      if (stale) await stale.unsubscribe();
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
+  }
+
+  await syncSubscriptionToServer(subscription);
   localStorage.setItem('pushSubscribed', '1');
+  localStorage.setItem(VAPID_STORAGE_KEY, publicKey);
+  return subscription;
+}
+
+/** Re-sync browser subscription to server when app reopens (PWA cold start). */
+export async function ensurePushSubscription() {
+  if (!isPushSupported()) return { ok: false, reason: 'unsupported' };
+  if (!localStorage.getItem('token')) return { ok: false, reason: 'not_logged_in' };
+  if (Notification.permission !== 'granted') return { ok: false, reason: 'permission' };
+
+  try {
+    await subscribeToPush();
+    return { ok: true, synced: true };
+  } catch (err) {
+    console.warn('[push] ensure failed:', err);
+    return { ok: false, reason: err.message || String(err) };
+  }
+}
+
+export async function fetchPushStatus() {
+  const res = await fetch(`${API_URL}/api/push/status`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.detail || 'Could not load push status');
+  }
   return data;
 }
 
@@ -120,6 +182,7 @@ export async function unsubscribeFromPush() {
   }
   localStorage.removeItem('pushSubscribed');
   localStorage.removeItem('morningPushSubscribed');
+  localStorage.removeItem(VAPID_STORAGE_KEY);
 }
 
 export async function sendServerTestPush() {
@@ -145,7 +208,31 @@ export async function isPushSubscribed() {
   }
 }
 
-// Re-export for backward compatibility with morningPush.js consumers
-export {
-  isPushSupported as defaultSupported,
-};
+export async function getPushSubscriptionState() {
+  let browser = false;
+  try {
+    browser = await isPushSubscribed();
+  } catch {
+    browser = false;
+  }
+
+  let server = false;
+  let devices = 0;
+  if (localStorage.getItem('token')) {
+    try {
+      const status = await fetchPushStatus();
+      server = Boolean(status.subscribed);
+      devices = status.devices || 0;
+    } catch {
+      server = false;
+    }
+  }
+
+  return {
+    browser,
+    server,
+    devices,
+    active: browser && server,
+    needsSync: browser && !server,
+  };
+}

@@ -11,4 +11,7 @@ export {
   unsubscribeFromPush,
   sendServerTestPush,
   isPushSubscribed,
+  ensurePushSubscription,
+  getPushSubscriptionState,
+  fetchPushStatus,
 } from './pushNotifications';

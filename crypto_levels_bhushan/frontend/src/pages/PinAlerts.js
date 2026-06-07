@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import PriceAlertPanel from '../components/PriceAlertPanel';
-import MorningAlertPanel from '../components/MorningAlertPanel';
+import PushNotificationPanel from '../components/PushNotificationPanel';
 import './PinAlerts.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -136,8 +135,7 @@ function PinAlerts({ user }) {
         </header>
 
         <section className="pin-notify-section">
-          <PriceAlertPanel />
-          <MorningAlertPanel />
+          <PushNotificationPanel />
         </section>
 
         {loading && <p className="pin-loading">Loading pins…</p>}

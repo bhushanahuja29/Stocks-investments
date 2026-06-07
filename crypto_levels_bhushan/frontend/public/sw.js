@@ -1,15 +1,22 @@
-/* Crypto Levels — Web Push service worker v2 */
-const SW_VERSION = 'v2';
+/* Crypto Levels — Web Push service worker v3 */
+const SW_VERSION = 'v3';
 
 const ROUTE_BY_EVENT = {
   morning_nifty: '/monitor',
   pin_alert: '/pins',
+  test: '/pins',
+};
+
+const TITLE_BY_EVENT = {
+  pin_alert: 'Pin alert',
+  morning_nifty: 'Morning alert',
+  test: 'Test notification',
 };
 
 self.addEventListener('push', (event) => {
   let data = {
-    title: 'Crypto Levels',
-    body: 'Price alert',
+    title: 'Pin alert',
+    body: 'Price crossed your alert level',
     url: '/pins',
     tag: 'crypto-levels',
     event: 'pin_alert',
@@ -26,7 +33,8 @@ self.addEventListener('push', (event) => {
 
   const eventType = data.event || 'pin_alert';
   const url = data.url || ROUTE_BY_EVENT[eventType] || '/pins';
-  const tag = data.tag || (eventType === 'pin_alert' ? 'pin-alert' : 'morning-nifty');
+  const tag = data.tag || (eventType === 'pin_alert' ? 'pin-alert' : eventType);
+  const title = data.title || TITLE_BY_EVENT[eventType] || 'Crypto Levels';
 
   const options = {
     body: data.body,
@@ -37,7 +45,7 @@ self.addEventListener('push', (event) => {
     renotify: true,
   };
 
-  event.waitUntil(self.registration.showNotification(data.title, options));
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (event) => {
