@@ -2,9 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { promptInstallFromButton } from './InstallPrompt';
 import { isIos, isStandalonePwa } from '../utils/pushPlatform';
+import { fetchAllTriggeredNotifications } from '../utils/triggeredAlerts';
 import './Navbar.css';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 function Navbar({ user, onLogout, refreshTrigger }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [triggeredCount, setTriggeredCount] = useState(0);
@@ -28,43 +27,8 @@ function Navbar({ user, onLogout, refreshTrigger }) {
   useEffect(() => {
     const fetchTriggeredCount = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/scrips`);
-        const data = await response.json();
-        if (!data.success) return;
-
-        let count = 0;
-        const pricePromises = data.scrips.map(async (scrip) => {
-          try {
-            const priceResponse = await fetch(
-              `${API_URL}/api/price/${scrip.symbol}?market_type=${scrip.market_type || 'crypto'}`
-            );
-            const priceData = await priceResponse.json();
-            return {
-              symbol: scrip.symbol,
-              price: priceData.success ? priceData.mark_price : null,
-            };
-          } catch {
-            return { symbol: scrip.symbol, price: null };
-          }
-        });
-
-        const prices = await Promise.all(pricePromises);
-        const priceMap = {};
-        prices.forEach((p) => {
-          if (p.price) priceMap[p.symbol] = p.price;
-        });
-
-        data.scrips.forEach((scrip) => {
-          const currentPrice = priceMap[scrip.symbol];
-          if (scrip.trigger_levels && currentPrice) {
-            scrip.trigger_levels.forEach((level) => {
-              if (!level.alert_disabled && currentPrice <= level.trigger_price) {
-                count += 1;
-              }
-            });
-          }
-        });
-        setTriggeredCount(count);
+        const data = await fetchAllTriggeredNotifications();
+        setTriggeredCount(data.total);
       } catch {
         /* ignore */
       }
@@ -77,7 +41,7 @@ function Navbar({ user, onLogout, refreshTrigger }) {
 
   const handleAlertsClick = () => {
     closeMenu();
-    navigate('/pins');
+    navigate('/notifications');
   };
 
   const handleInstallClick = async () => {
@@ -142,7 +106,7 @@ function Navbar({ user, onLogout, refreshTrigger }) {
                 type="button"
                 className="alerts-chip"
                 onClick={handleAlertsClick}
-                title="Pin alerts & notifications"
+                title="Triggered level & pin alerts"
               >
                 🔔 Alerts
                 {triggeredCount > 0 && (
@@ -217,7 +181,10 @@ function Navbar({ user, onLogout, refreshTrigger }) {
           ))}
           <button type="button" className="drawer-alerts-link" onClick={handleAlertsClick}>
             <span className="nav-icon">🔔</span>
-            Price alerts & push
+            Triggered alerts
+            {triggeredCount > 0 && (
+              <span className="notification-badge">{triggeredCount}</span>
+            )}
           </button>
           {!isStandalonePwa() && (
             <button type="button" className="drawer-alerts-link" onClick={handleInstallClick}>
