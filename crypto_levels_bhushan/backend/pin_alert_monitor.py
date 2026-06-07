@@ -88,7 +88,7 @@ def _dispatch_pin_alerts(
     fired: list[dict[str, Any]],
     is_repeat: bool = False,
 ) -> tuple[int, int]:
-    from push_notifications import broadcast_pin_alert_push
+    from push_notifications import broadcast_pin_alert_push, build_pin_alert_message
 
     crosses = 0
     pushes_sent = 0
@@ -116,13 +116,16 @@ def _dispatch_pin_alerts(
             market_type=mtype,
         )
         pushes_sent += stats.get("sent", 0)
+        title, body = build_pin_alert_message(
+            sym, direction, ltp_f, alert_price, mtype
+        )
         log_notification(
             db,
             dedupe_key=dedupe_key,
             event="pin_alert",
             symbol=sym,
-            title=f"Pin alert — {sym}",
-            body=f"{sym} crossed {direction} {alert_price:,.2f}",
+            title=title,
+            body=body,
         )
     return crosses, pushes_sent
 

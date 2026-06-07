@@ -161,6 +161,12 @@ def broadcast_push(
     return {"sent": sent, "failed": failed, "removed": removed}
 
 
+def _format_alert_price(value: float, market_type: str) -> str:
+    if market_type in ("indian_stock", "indian_stocks"):
+        return f"₹{value:,.2f}"
+    return f"{value:,.2f}"
+
+
 def build_pin_alert_message(
     symbol: str,
     direction: str,
@@ -168,15 +174,14 @@ def build_pin_alert_message(
     alert_price: float,
     market_type: str = "crypto",
 ) -> tuple[str, str]:
-    arrow = "above" if direction == "above" else "below"
-    if market_type == "indian_stocks":
-        price_s = f"₹{ltp:,.2f}"
-        alert_s = f"₹{alert_price:,.2f}"
+    price_s = _format_alert_price(ltp, market_type)
+    alert_s = _format_alert_price(alert_price, market_type)
+    if direction == "above":
+        title = f"{symbol} — pin above alert"
+        body = f"Price is ABOVE your level ({alert_s}). Now {price_s}."
     else:
-        price_s = f"{ltp:,.2f}"
-        alert_s = f"{alert_price:,.2f}"
-    title = f"Pin alert — {symbol}"
-    body = f"{symbol} crossed {arrow} {alert_s} (now {price_s})"
+        title = f"{symbol} — pin below alert"
+        body = f"Price is BELOW your level ({alert_s}). Now {price_s}."
     return title, body
 
 

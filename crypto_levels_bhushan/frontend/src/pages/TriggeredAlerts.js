@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchAllTriggeredNotifications } from '../utils/triggeredAlerts';
-import { stopPinAlert } from '../utils/pinAlertApi';
+import { fetchTriggeredLevelAlerts } from '../utils/triggeredAlerts';
 import './TriggeredAlerts.css';
 
 function formatPrice(value, marketType) {
@@ -17,16 +16,12 @@ function formatPrice(value, marketType) {
 function TriggeredAlerts() {
   const navigate = useNavigate();
   const [levels, setLevels] = useState([]);
-  const [pins, setPins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [stopping, setStopping] = useState('');
 
   const load = useCallback(async () => {
     try {
-      const data = await fetchAllTriggeredNotifications();
-      setLevels(data.levels);
-      setPins(data.pins);
+      setLevels(await fetchTriggeredLevelAlerts());
       setError('');
     } catch (err) {
       setError(err.message || 'Failed to load alerts');
@@ -43,87 +38,33 @@ function TriggeredAlerts() {
 
   const openInMonitor = (symbol, levelIndex) => {
     sessionStorage.setItem('selectedSymbol', symbol);
-    if (levelIndex != null) {
-      sessionStorage.setItem('selectedLevelIndex', String(levelIndex));
-    } else {
-      sessionStorage.removeItem('selectedLevelIndex');
-    }
+    sessionStorage.setItem('selectedLevelIndex', String(levelIndex));
     navigate('/monitor');
   };
-
-  const handleStopPin = async (symbol) => {
-    setStopping(symbol);
-    try {
-      await stopPinAlert(symbol);
-      await load();
-    } catch (err) {
-      alert(err.message || 'Failed to stop alert');
-    } finally {
-      setStopping('');
-    }
-  };
-
-  const total = levels.length + pins.length;
 
   return (
     <div className="triggered-alerts-page">
       <div className="triggered-alerts-container">
         <header className="triggered-alerts-header">
-          <h1>Triggered alerts</h1>
+          <h1>Monitor level alerts</h1>
           <p>
-            Support levels hit and pin price alerts ringing right now.
-            {total > 0 ? ` ${total} active.` : ' None active.'}
+            Scrips from Monitor whose support level has been hit (price at or below trigger).
+            {levels.length > 0 ? ` ${levels.length} triggered.` : ' None triggered right now.'}
+            {' '}Pin alerts are separate — manage them under Pins; phone push fires when a pin level triggers.
           </p>
         </header>
 
-        {loading && <p className="triggered-loading">Loading alerts…</p>}
+        {loading && <p className="triggered-loading">Loading monitor alerts…</p>}
         {error && <p className="triggered-error">{error}</p>}
 
-        {!loading && !error && total === 0 && (
-          <p className="triggered-empty">No triggered alerts. Levels appear here when price hits a support trigger.</p>
-        )}
-
-        {pins.length > 0 && (
-          <section className="triggered-section">
-            <h2>Pin price alerts</h2>
-            <div className="triggered-list">
-              {pins.map((pin) => (
-                <div key={pin.id} className="triggered-card ringing">
-                  <div className="triggered-card-top">
-                    <span className="triggered-symbol">{pin.symbol}</span>
-                    <span className="triggered-badge pin">Ringing</span>
-                  </div>
-                  <div className="triggered-prices">
-                    <span>LTP {formatPrice(pin.current_price, pin.market_type)}</span>
-                    {pin.alert_above != null && (
-                      <span className="triggered-meta">Above {formatPrice(pin.alert_above, pin.market_type)}</span>
-                    )}
-                    {pin.alert_below != null && (
-                      <span className="triggered-meta">Below {formatPrice(pin.alert_below, pin.market_type)}</span>
-                    )}
-                  </div>
-                  <div className="triggered-actions">
-                    <button
-                      type="button"
-                      className="triggered-btn stop"
-                      disabled={stopping === pin.symbol}
-                      onClick={() => handleStopPin(pin.symbol)}
-                    >
-                      {stopping === pin.symbol ? 'Stopping…' : 'Stop alert'}
-                    </button>
-                    <button type="button" className="triggered-btn" onClick={() => navigate('/pins')}>
-                      Manage pins
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+        {!loading && !error && levels.length === 0 && (
+          <p className="triggered-empty">
+            No monitor levels triggered. They appear here when live price drops to a support trigger.
+          </p>
         )}
 
         {levels.length > 0 && (
           <section className="triggered-section">
-            <h2>Level triggers</h2>
             <div className="triggered-list">
               {levels.map((item) => (
                 <div key={item.id} className="triggered-card">
@@ -135,7 +76,7 @@ function TriggeredAlerts() {
                   </div>
                   <div className="triggered-prices">
                     <span className="triggered-hit">
-                      Trigger {formatPrice(item.trigger_price, item.market_type)}
+                      Level {formatPrice(item.trigger_price, item.market_type)}
                     </span>
                     <span className="triggered-current">
                       Now {formatPrice(item.current_price, item.market_type)}

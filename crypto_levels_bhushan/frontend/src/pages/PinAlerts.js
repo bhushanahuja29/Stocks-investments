@@ -22,6 +22,19 @@ function PinCard({ pin, isAdmin, onSaved, onStop, stopping }) {
   const ltp = quote.ltp;
   const pct = quote.change_pct;
   const ringing = pin.alert_ringing;
+  const direction = pin.alert_direction;
+  const triggerPrice = pin.alert_trigger_price;
+
+  const ringingLabel = () => {
+    if (!ringing || !direction) {
+      return 'Alert ringing — tap Stop to silence';
+    }
+    const level = formatPrice(triggerPrice, pin.market_type);
+    if (direction === 'above') {
+      return `Triggered: price is ABOVE ${level}`;
+    }
+    return `Triggered: price is BELOW ${level}`;
+  };
 
   const save = async () => {
     setBusy(true);
@@ -58,7 +71,7 @@ function PinCard({ pin, isAdmin, onSaved, onStop, stopping }) {
       </div>
       {ringing && (
         <div className="pin-ringing-badge">
-          Alert ringing — tap Stop to silence
+          {ringingLabel()}
         </div>
       )}
       <div className="pin-price">{formatPrice(ltp, pin.market_type)}</div>
@@ -154,8 +167,9 @@ function PinAlerts({ user }) {
         <header className="pin-alerts-header">
           <h1>Pinned stocks</h1>
           <p>
-            When a price level is hit, alerts repeat until you tap <strong>Stop alert</strong>.
-            Push notifications and sound continue every poll until stopped.
+            Set above/below price alerts for pinned scrips. When triggered you get a phone push
+            (&quot;price is ABOVE/BELOW your level&quot;) and sound until you tap <strong>Stop alert</strong>.
+            Monitor support levels are separate — use the Alerts button in the nav bar.
           </p>
         </header>
 

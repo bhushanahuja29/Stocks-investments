@@ -1,5 +1,3 @@
-import { fetchPins } from './pinAlertApi';
-
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 async function fetchScrips() {
@@ -24,7 +22,8 @@ async function fetchPrice(symbol, marketType) {
 }
 
 /**
- * Level triggers: price at or below support trigger (same logic as Navbar badge).
+ * Monitor scrip support levels that have triggered (price at or below trigger).
+ * Pins are separate — see /pins and push notifications for pin alerts.
  */
 export async function fetchTriggeredLevelAlerts() {
   const scrips = await fetchScrips();
@@ -48,7 +47,6 @@ export async function fetchTriggeredLevelAlerts() {
       if (currentPrice <= level.trigger_price) {
         triggered.push({
           id: `${scrip.symbol}-${levelIndex}`,
-          kind: 'level',
           symbol: scrip.symbol,
           market_type: scrip.market_type || 'crypto',
           timeframe: level.timeframe || '1w',
@@ -61,31 +59,4 @@ export async function fetchTriggeredLevelAlerts() {
   });
 
   return triggered.sort((a, b) => a.symbol.localeCompare(b.symbol));
-}
-
-/**
- * Pin alerts currently ringing (price crossed above/below threshold).
- */
-export async function fetchRingingPinAlerts() {
-  const pins = await fetchPins();
-  return pins
-    .filter((pin) => pin.alert_ringing)
-    .map((pin) => ({
-      id: `pin-${pin.symbol}`,
-      kind: 'pin',
-      symbol: pin.symbol,
-      market_type: pin.market_type,
-      current_price: pin.quote?.ltp ?? null,
-      alert_above: pin.alert_above,
-      alert_below: pin.alert_below,
-      change_pct: pin.quote?.change_pct ?? null,
-    }));
-}
-
-export async function fetchAllTriggeredNotifications() {
-  const [levels, pins] = await Promise.all([
-    fetchTriggeredLevelAlerts(),
-    fetchRingingPinAlerts().catch(() => []),
-  ]);
-  return { levels, pins, total: levels.length + pins.length };
 }

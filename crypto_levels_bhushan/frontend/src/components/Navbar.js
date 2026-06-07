@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { promptInstallFromButton } from './InstallPrompt';
 import { isIos, isStandalonePwa } from '../utils/pushPlatform';
-import { fetchAllTriggeredNotifications } from '../utils/triggeredAlerts';
+import { fetchTriggeredLevelAlerts } from '../utils/triggeredAlerts';
 import './Navbar.css';
 function Navbar({ user, onLogout, refreshTrigger }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -27,8 +27,8 @@ function Navbar({ user, onLogout, refreshTrigger }) {
   useEffect(() => {
     const fetchTriggeredCount = async () => {
       try {
-        const data = await fetchAllTriggeredNotifications();
-        setTriggeredCount(data.total);
+        const levels = await fetchTriggeredLevelAlerts();
+        setTriggeredCount(levels.length);
       } catch {
         /* ignore */
       }
@@ -106,7 +106,7 @@ function Navbar({ user, onLogout, refreshTrigger }) {
                 type="button"
                 className="alerts-chip"
                 onClick={handleAlertsClick}
-                title="Triggered level & pin alerts"
+                title="Monitor scrips with triggered support levels"
               >
                 🔔 Alerts
                 {triggeredCount > 0 && (
@@ -181,7 +181,7 @@ function Navbar({ user, onLogout, refreshTrigger }) {
           ))}
           <button type="button" className="drawer-alerts-link" onClick={handleAlertsClick}>
             <span className="nav-icon">🔔</span>
-            Triggered alerts
+            Monitor level alerts
             {triggeredCount > 0 && (
               <span className="notification-badge">{triggeredCount}</span>
             )}
