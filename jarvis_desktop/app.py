@@ -139,7 +139,7 @@ class JarvisApp:
             if reply.payload.get("view") == "movers_table":
                 self.ui.append_movers_table("Krypto", reply.payload)
                 self.ui.flush()
-                self._present_text("Krypto", reply.text)
+                self._speak_only(reply.text)
             else:
                 if reply.log_detail:
                     self.ui.append("Krypto", reply.log_detail)
@@ -152,14 +152,20 @@ class JarvisApp:
         finally:
             self._set_command_busy(False)
 
+    def _speak_only(self, text: str) -> None:
+        """Speak without appending to chat (used when a rich table is already on screen)."""
+        if text.strip():
+            self._update_status("speaking", "Speaking response", loading=False)
+            self.ui.flush()
+            self.tts.say(text)
+        self.ui.flush()
+
     def _present_text(self, who: str, text: str, *, speak: bool = True) -> None:
         """Show full text in UI first, then speak (avoids TTS ahead of on-screen text)."""
         self.ui.append(who, text)
         self.ui.flush()
         if speak and text.strip():
-            self._update_status("speaking", "Speaking response", loading=False)
-            self.ui.flush()
-            self.tts.say(text)
+            self._speak_only(text)
         self.ui.flush()
 
     def run_morning_brief(self) -> None:

@@ -25,6 +25,8 @@ _MOVER_CUES = (
     "dropped",
     "change",
     "today",
+    "tomorrow",
+    "happen",
     "this week",
     "this month",
     "sorted",
@@ -68,11 +70,13 @@ def parse_mover_query(text: str) -> MoverQuery | None:
     index_id, index_label = resolve_index_from_text(text)
 
     min_pct = 2.0
-    pct_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:%|percent)", lower)
+    pct_match = re.search(r"(-?\d+(?:\.\d+)?)\s*(?:%|percent)", lower)
     if pct_match:
         min_pct = float(pct_match.group(1))
     elif "2 percent" in lower or "2%" in lower:
         min_pct = 2.0
+    elif any(w in lower for w in ("tomorrow", "happen", "today")) and "nifty" in lower:
+        min_pct = 0.0
 
     period = "daily"
     if "this month" in lower or "monthly" in lower:
